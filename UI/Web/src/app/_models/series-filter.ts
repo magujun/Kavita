@@ -78,4 +78,3 @@ export interface FilterEvent {
   filter: SeriesFilter;
   isFirst: boolean;
 }
-

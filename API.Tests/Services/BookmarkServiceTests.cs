@@ -56,6 +56,12 @@ public class BookmarkServiceTests
             Substitute.For<IImageService>(), Substitute.For<IEventHub>());
     }
 
+    private BookmarkService Create(IDirectoryService ds)
+    {
+        return new BookmarkService(Substitute.For<ILogger<BookmarkService>>(), _unitOfWork, ds,
+            Substitute.For<IImageService>(), Substitute.For<IEventHub>());
+    }
+
     #region Setup
 
     private static DbConnection CreateInMemoryDatabase()
