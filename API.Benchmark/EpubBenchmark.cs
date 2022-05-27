@@ -16,7 +16,7 @@ namespace API.Benchmark;
 public class EpubBenchmark
 {
     [Benchmark]
-    public static async Task GetWordCount_PassByString()
+    public async Task GetWordCount_PassByString()
     {
         using var book = await EpubReader.OpenBookAsync("Data/book-test.epub", BookService.BookReaderOptions);
         foreach (var bookFile in book.Content.Html.Values)
@@ -27,7 +27,7 @@ public class EpubBenchmark
     }
 
     [Benchmark]
-    public static async Task GetWordCount_PassByRef()
+    public async Task GetWordCount_PassByRef()
     {
         using var book = await EpubReader.OpenBookAsync("Data/book-test.epub", BookService.BookReaderOptions);
         foreach (var bookFile in book.Content.Html.Values)

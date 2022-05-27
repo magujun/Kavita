@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { UntypedFormGroup, UntypedFormControl, Validators } from '@angular/forms';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { take } from 'rxjs';
 import { SettingsService } from '../settings.service';
@@ -13,20 +13,19 @@ import { ServerSettings } from '../_models/server-settings';
 export class ManageMediaSettingsComponent implements OnInit {
 
   serverSettings!: ServerSettings;
-  settingsForm: UntypedFormGroup = new UntypedFormGroup({});
+  settingsForm: FormGroup = new FormGroup({});
   
   constructor(private settingsService: SettingsService, private toastr: ToastrService) { }
 
   ngOnInit(): void {
     this.settingsService.getServerSettings().pipe(take(1)).subscribe((settings: ServerSettings) => {
       this.serverSettings = settings;
-      this.settingsForm.addControl('convertBookmarkToWebP', new UntypedFormControl(this.serverSettings.convertBookmarkToWebP, [Validators.required]));
+      this.settingsForm.addControl('convertBookmarkToWebP', new FormControl(this.serverSettings.convertBookmarkToWebP, [Validators.required]));
     });
   }
 
   resetForm() {
     this.settingsForm.get('convertBookmarkToWebP')?.setValue(this.serverSettings.convertBookmarkToWebP);
-    this.settingsForm.markAsPristine();
   }
 
   async saveSettings() {

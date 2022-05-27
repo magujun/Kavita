@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using API.Entities.Enums;
 using API.Entities.Interfaces;
 using API.Parser;
-using API.Services;
 
 namespace API.Entities
 {
-    public class Chapter : IEntityDate, IHasReadTimeEstimate
+    public class Chapter : IEntityDate
     {
         public int Id { get; set; }
         /// <summary>
@@ -25,7 +24,7 @@ namespace API.Entities
         public DateTime Created { get; set; }
         public DateTime LastModified { get; set; }
         /// <summary>
-        /// Relative path to the (managed) image file representing the cover image
+        /// Absolute path to the (managed) image file
         /// </summary>
         /// <remarks>The file is managed internally to Kavita's APPDIR</remarks>
         public string CoverImage { get; set; }
@@ -74,16 +73,9 @@ namespace API.Entities
         public int Count { get; set; } = 0;
 
         /// <summary>
-        /// Total Word count of all chapters in this chapter.
+        /// Total words in a Chapter (books only)
         /// </summary>
-        /// <remarks>Word Count is only available from EPUB files</remarks>
         public long WordCount { get; set; }
-        /// <inheritdoc cref="IHasReadTimeEstimate"/>
-        public int MinHoursToRead { get; set; }
-        /// <inheritdoc cref="IHasReadTimeEstimate"/>
-        public int MaxHoursToRead { get; set; }
-        /// <inheritdoc cref="IHasReadTimeEstimate"/>
-        public int AvgHoursToRead { get; set; }
 
 
         /// <summary>

@@ -28,12 +28,11 @@ export enum EVENTS {
    */
   CleanupProgress = 'CleanupProgress',
   /**
-   * A subtype of NotificationProgress that represnts a user downloading a file or group of files.
-   * Note: In v0.5.5, this is being replaced by an inbrowser experience. The message is changed and this will be moved to dashboard view once built
+   * A subtype of NotificationProgress that represnts a user downloading a file or group of files
    */
   DownloadProgress = 'DownloadProgress',
   /**
-   * A generic progress event
+   * A generic progress event 
    */
   NotificationProgress = 'NotificationProgress',
   /**
@@ -68,14 +67,6 @@ export enum EVENTS {
     * When bulk bookmarks are being converted
     */
    ConvertBookmarksProgress = 'ConvertBookmarksProgress',
-   /**
-    * When files are being scanned to calculate word count
-    */
-   WordCountAnalyzerProgress = 'WordCountAnalyzerProgress',
-   /**
-    * When the user needs to be informed, but it's not a big deal
-    */
-   Info = 'Info',
 }
 
 export interface Message<T> {
@@ -112,15 +103,15 @@ export class MessageHubService {
 
   /**
    * Tests that an event is of the type passed
-   * @param event
-   * @param eventType
-   * @returns
+   * @param event 
+   * @param eventType 
+   * @returns 
    */
   public isEventType(event: Message<any>, eventType: EVENTS) {
     if (event.event == EVENTS.NotificationProgress) {
       const notification = event.payload as NotificationProgressEvent;
       return notification.eventType.toLowerCase() == eventType.toLowerCase();
-    }
+    } 
     return event.event === eventType;
   }
 
@@ -164,13 +155,6 @@ export class MessageHubService {
       });
     });
 
-    this.hubConnection.on(EVENTS.WordCountAnalyzerProgress, resp => {
-      this.messagesSource.next({
-        event: EVENTS.WordCountAnalyzerProgress,
-        payload: resp.body
-      });
-    });
-
     this.hubConnection.on(EVENTS.LibraryModified, resp => {
       this.messagesSource.next({
         event: EVENTS.LibraryModified,
@@ -208,6 +192,7 @@ export class MessageHubService {
     });
 
     this.hubConnection.on(EVENTS.UserUpdate, resp => {
+      console.log('got UserUpdate', resp);
       this.messagesSource.next({
         event: EVENTS.UserUpdate,
         payload: resp.body as UserUpdateEvent
@@ -217,13 +202,6 @@ export class MessageHubService {
     this.hubConnection.on(EVENTS.Error, resp => {
       this.messagesSource.next({
         event: EVENTS.Error,
-        payload: resp.body
-      });
-    });
-
-    this.hubConnection.on(EVENTS.Info, resp => {
-      this.messagesSource.next({
-        event: EVENTS.Info,
         payload: resp.body
       });
     });

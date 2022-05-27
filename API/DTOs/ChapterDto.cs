@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using API.DTOs.Metadata;
-using API.DTOs.Reader;
-using API.Entities.Enums;
-using API.Entities.Interfaces;
 
 namespace API.DTOs
 {
@@ -11,7 +8,7 @@ namespace API.DTOs
     /// A Chapter is the lowest grouping of a reading medium. A Chapter contains a set of MangaFiles which represents the underlying
     /// file (abstracted from type).
     /// </summary>
-    public class ChapterDto : IHasReadTimeEstimate
+    public class ChapterDto
     {
         public int Id { get; init; }
         /// <summary>
@@ -65,29 +62,8 @@ namespace API.DTOs
         /// <remarks>Metadata field</remarks>
         public string TitleName { get; set; }
         /// <summary>
-        /// Summary of the Chapter
+        /// Number of Words for this chapter. Only applies to Epub
         /// </summary>
-        /// <remarks>This is not set normally, only for Series Detail</remarks>
-        public string Summary { get; init; }
-        /// <summary>
-        /// Age Rating for the issue/chapter
-        /// </summary>
-        public AgeRating AgeRating { get; init; }
-        /// <summary>
-        /// Total words in a Chapter (books only)
-        /// </summary>
-        public long WordCount { get; set; } = 0L;
-
-        /// <summary>
-        /// Formatted Volume title ie) Volume 2.
-        /// </summary>
-        /// <remarks>Only available when fetched from Series Detail API</remarks>
-        public string VolumeTitle { get; set; } = string.Empty;
-        /// <inheritdoc cref="IHasReadTimeEstimate.MinHoursToRead"/>
-        public int MinHoursToRead { get; set; }
-        /// <inheritdoc cref="IHasReadTimeEstimate.MaxHoursToRead"/>
-        public int MaxHoursToRead { get; set; }
-        /// <inheritdoc cref="IHasReadTimeEstimate.AvgHoursToRead"/>
-        public int AvgHoursToRead { get; set; }
+        public long WordCount { get; set; }
     }
 }

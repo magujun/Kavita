@@ -1,6 +1,5 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { Router } from '@angular/router';
-import { ReaderService } from 'src/app/_services/reader.service';
 import { TagBadgeCursor } from '../../shared/tag-badge/tag-badge.component';
 import { FilterQueryParam } from '../../shared/_services/filter-utilities.service';
 import { UtilityService } from '../../shared/_services/utility.service';
@@ -10,17 +9,20 @@ import { Series } from '../../_models/series';
 import { SeriesMetadata } from '../../_models/series-metadata';
 import { MetadataService } from '../../_services/metadata.service';
 
+const MAX_WORDS_PER_HOUR = 30_000;
+const MIN_WORDS_PER_HOUR = 10_260;
+const MAX_PAGES_PER_MINUTE = 2.75;
+const MIN_PAGES_PER_MINUTE = 3.33;
+
 
 @Component({
   selector: 'app-series-metadata-detail',
   templateUrl: './series-metadata-detail.component.html',
-  styleUrls: ['./series-metadata-detail.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./series-metadata-detail.component.scss']
 })
 export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
 
   @Input() seriesMetadata!: SeriesMetadata;
-  @Input() hasReadingProgress: boolean = false;
   /**
    * Reading lists with a connection to the Series
    */
@@ -29,6 +31,9 @@ export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
 
   isCollapsed: boolean = true;
   hasExtendedProperites: boolean = false;
+
+  minHoursToRead: number = 1;
+  maxHoursToRead: number = 1;
 
   /**
    * Html representation of Series Summary
@@ -47,11 +52,7 @@ export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
     return FilterQueryParam;
   }
 
-  constructor(public utilityService: UtilityService, public metadataService: MetadataService, 
-    private router: Router, public readerService: ReaderService,
-    private readonly cdRef: ChangeDetectorRef) {
-    
-  }
+  constructor(public utilityService: UtilityService, public metadataService: MetadataService, private router: Router) { }
   
   ngOnChanges(changes: SimpleChanges): void {
     this.hasExtendedProperites = this.seriesMetadata.colorists.length > 0 || 
@@ -66,8 +67,19 @@ export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
 
     if (this.seriesMetadata !== null) {
       this.seriesSummary = (this.seriesMetadata.summary === null ? '' : this.seriesMetadata.summary).replace(/\n/g, '<br>');
+
+      
+      
     }
-    this.cdRef.markForCheck();
+    if (this.series !== null) {
+      if (this.series.format === MangaFormat.EPUB && this.series.wordCount > 0) {
+        this.minHoursToRead = parseInt(Math.round(this.series.wordCount / MAX_WORDS_PER_HOUR) + '', 10);
+        this.maxHoursToRead = parseInt(Math.round(this.series.wordCount / MIN_WORDS_PER_HOUR) + '', 10);
+      } else if (this.series.format !== MangaFormat.EPUB) {
+        this.minHoursToRead = parseInt(Math.round((this.series.pages / MIN_PAGES_PER_MINUTE) / 60) + '', 10);
+        this.maxHoursToRead = parseInt(Math.round((this.series.pages / MAX_PAGES_PER_MINUTE) / 60) + '', 10);
+      }
+    }
   }
 
   ngOnInit(): void {
@@ -75,11 +87,6 @@ export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
 
   toggleView() {
     this.isCollapsed = !this.isCollapsed;
-    this.cdRef.markForCheck();
-  }
-
-  handleGoTo(event: {queryParamName: FilterQueryParam, filter: any}) {
-    this.goTo(event.queryParamName, event.filter);
   }
 
   goTo(queryParamName: FilterQueryParam, filter: any) {
@@ -88,4 +95,5 @@ export class SeriesMetadataDetailComponent implements OnInit, OnChanges {
     params[FilterQueryParam.Page] = 1;
     this.router.navigate(['library', this.series.libraryId], {queryParams: params});
   }
+
 }

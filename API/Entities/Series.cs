@@ -6,7 +6,7 @@ using API.Entities.Metadata;
 
 namespace API.Entities;
 
-public class Series : IEntityDate, IHasReadTimeEstimate
+public class Series : IEntityDate
 {
     public int Id { get; set; }
     /// <summary>
@@ -50,15 +50,7 @@ public class Series : IEntityDate, IHasReadTimeEstimate
     /// Sum of all Volume page counts
     /// </summary>
     public int Pages { get; set; }
-    /// <summary>
-    /// Highest path (that is under library root) that contains the series.
-    /// </summary>
-    /// <remarks><see cref="Parser.Parser.NormalizePath"/> must be used before setting</remarks>
-    public string FolderPath { get; set; }
-    /// <summary>
-    /// Last time the folder was scanned
-    /// </summary>
-    public DateTime LastFolderScanned { get; set; }
+
     /// <summary>
     /// The type of all the files attached to this series
     /// </summary>
@@ -74,14 +66,9 @@ public class Series : IEntityDate, IHasReadTimeEstimate
     public DateTime LastChapterAdded { get; set; }
 
     /// <summary>
-    /// Total Word count of all chapters in this chapter.
+    /// Total words in a Series (books only)
     /// </summary>
-    /// <remarks>Word Count is only available from EPUB files</remarks>
     public long WordCount { get; set; }
-
-    public int MinHoursToRead { get; set; }
-    public int MaxHoursToRead { get; set; }
-    public int AvgHoursToRead { get; set; }
 
     public SeriesMetadata Metadata { get; set; }
 
@@ -100,4 +87,5 @@ public class Series : IEntityDate, IHasReadTimeEstimate
     public List<Volume> Volumes { get; set; }
     public Library Library { get; set; }
     public int LibraryId { get; set; }
+
 }

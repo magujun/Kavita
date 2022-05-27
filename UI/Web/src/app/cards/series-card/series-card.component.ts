@@ -1,23 +1,24 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output } from '@angular/core';
-import { NavigationStart, Router } from '@angular/router';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output } from '@angular/core';
+import { Router } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
-import { filter, take } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import { Series } from 'src/app/_models/series';
 import { AccountService } from 'src/app/_services/account.service';
 import { ImageService } from 'src/app/_services/image.service';
 import { ActionFactoryService, Action, ActionItem } from 'src/app/_services/action-factory.service';
 import { SeriesService } from 'src/app/_services/series.service';
+import { ConfirmService } from 'src/app/shared/confirm.service';
 import { ActionService } from 'src/app/_services/action.service';
 import { EditSeriesModalComponent } from '../_modals/edit-series-modal/edit-series-modal.component';
+import { MessageHubService } from 'src/app/_services/message-hub.service';
 import { Subject } from 'rxjs';
 import { RelationKind } from 'src/app/_models/series-detail/relation-kind';
 
 @Component({
   selector: 'app-series-card',
   templateUrl: './series-card.component.html',
-  styleUrls: ['./series-card.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./series-card.component.scss']
 })
 export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
   @Input() data!: Series;
@@ -44,28 +45,34 @@ export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
    */
    @Output() selection = new EventEmitter<boolean>();
 
+  isAdmin = false;
   actions: ActionItem<Series>[] = [];
   imageUrl: string = '';
   onDestroy: Subject<void> = new Subject<void>();
 
-  constructor(private router: Router, private cdRef: ChangeDetectorRef,
+  constructor(private accountService: AccountService, private router: Router,
               private seriesService: SeriesService, private toastr: ToastrService,
-              private modalService: NgbModal, private imageService: ImageService, 
-              private actionFactoryService: ActionFactoryService,
-              private actionService: ActionService) {}
+              private modalService: NgbModal, private confirmService: ConfirmService, 
+              public imageService: ImageService, private actionFactoryService: ActionFactoryService,
+              private actionService: ActionService, private hubService: MessageHubService) {
+    this.accountService.currentUser$.pipe(take(1)).subscribe(user => {
+      if (user) {
+        this.isAdmin = this.accountService.hasAdminRole(user);
+      }
+    });
+  }
 
 
   ngOnInit(): void {
     if (this.data) {
       this.imageUrl = this.imageService.getSeriesCoverImage(this.data.id);
-      this.cdRef.markForCheck();
     }
   }
 
   ngOnChanges(changes: any) {
     if (this.data) {
       this.actions = this.actionFactoryService.getSeriesActions((action: Action, series: Series) => this.handleSeriesActionCallback(action, series));
-      this.cdRef.markForCheck();
+      this.imageUrl = this.imageService.randomize(this.imageService.getSeriesCoverImage(this.data.id));
     }
   }
 
@@ -97,15 +104,6 @@ export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
       case(Action.AddToReadingList):
         this.actionService.addSeriesToReadingList(series);
         break;
-      case Action.AddToWantToReadList:
-        this.actionService.addMultipleSeriesToWantToReadList([series.id]);
-        break;
-      case Action.RemoveFromWantToReadList:
-        this.actionService.removeMultipleSeriesFromWantToReadList([series.id]);
-        if (this.router.url.startsWith('/want-to-read')) {
-          this.reload.emit(true);
-        }
-        break;
       case(Action.AddToCollection):
         this.actionService.addMultipleSeriesToCollectionTag([series]);
         break;
@@ -121,10 +119,13 @@ export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
     const modalRef = this.modalService.open(EditSeriesModalComponent, {  size: 'lg' });
     modalRef.componentInstance.series = data;
     modalRef.closed.subscribe((closeResult: {success: boolean, series: Series, coverImageUpdate: boolean}) => {
+      window.scrollTo(0, 0);
       if (closeResult.success) {
+        if (closeResult.coverImageUpdate) {
+          this.imageUrl = this.imageService.randomize(this.imageService.getSeriesCoverImage(closeResult.series.id));
+        }
         this.seriesService.getSeries(data.id).subscribe(series => {
           this.data = series;
-          this.cdRef.markForCheck();
           this.reload.emit(true);
           this.dataChanged.emit(series);
         });
@@ -154,7 +155,6 @@ export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
     this.actionService.markSeriesAsUnread(series, () => {
       if (this.data) {
         this.data.pagesRead = 0;
-        this.cdRef.markForCheck();
       }
       
       this.dataChanged.emit(series);
@@ -165,7 +165,6 @@ export class SeriesCardComponent implements OnInit, OnChanges, OnDestroy {
     this.actionService.markSeriesAsRead(series, () => {
       if (this.data) {
         this.data.pagesRead = series.pages;
-        this.cdRef.markForCheck();
       }
       this.dataChanged.emit(series);
     });

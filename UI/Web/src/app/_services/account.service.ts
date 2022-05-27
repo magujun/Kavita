@@ -35,8 +35,7 @@ export class AccountService implements OnDestroy {
   constructor(private httpClient: HttpClient, private router: Router, 
     private messageHub: MessageHubService, private themeService: ThemeService) {
       messageHub.messages$.pipe(filter(evt => evt.event === EVENTS.UserUpdate), 
-        map(evt => evt.payload as UserUpdateEvent),
-        filter(userUpdateEvent => userUpdateEvent.userName === this.currentUser?.username),  
+        map(evt => evt.payload as UserUpdateEvent),  
         switchMap(() => this.refreshToken()))
         .subscribe(() => {});
     }
@@ -92,9 +91,8 @@ export class AccountService implements OnDestroy {
       this.themeService.setTheme(this.themeService.defaultTheme);
     }
 
-    this.currentUser = user;
     this.currentUserSource.next(user);
-    
+    this.currentUser = user;
     if (this.currentUser !== undefined) {
       this.startRefreshTokenTimer();
     } else {
@@ -147,15 +145,6 @@ export class AccountService implements OnDestroy {
     return this.httpClient.post<User>(this.baseUrl + 'account/confirm-email', model);
   }
 
-  /**
-   * Given a user id, returns a full url for setting up the user account
-   * @param userId 
-   * @returns 
-   */
-  getInviteUrl(userId: number, withBaseUrl: boolean = true) {
-    return this.httpClient.get<string>(this.baseUrl + 'account/invite-url?userId=' + userId + '&withBaseUrl=' + withBaseUrl, {responseType: 'text' as 'json'});
-  }
-
   getDecodedToken(token: string) {
     return JSON.parse(atob(token.split('.')[1]));
   }
@@ -168,8 +157,8 @@ export class AccountService implements OnDestroy {
     return this.httpClient.post(this.baseUrl + 'account/confirm-password-reset', model);
   }
 
-  resetPassword(username: string, password: string, oldPassword: string) {
-    return this.httpClient.post(this.baseUrl + 'account/reset-password', {username, password, oldPassword}, {responseType: 'json' as 'text'});
+  resetPassword(username: string, password: string) {
+    return this.httpClient.post(this.baseUrl + 'account/reset-password', {username, password}, {responseType: 'json' as 'text'});
   }
 
   update(model: {email: string, roles: Array<string>, libraries: Array<number>, userId: number}) {
@@ -228,7 +217,7 @@ export class AccountService implements OnDestroy {
 
   private refreshToken() {
     if (this.currentUser === null || this.currentUser === undefined) return of();
-    //console.log('refreshing token and updating user account');
+    console.log('refreshing token and updating user account');
 
     return this.httpClient.post<{token: string, refreshToken: string}>(this.baseUrl + 'account/refresh-token', {token: this.currentUser.token, refreshToken: this.currentUser.refreshToken}).pipe(map(user => {
       if (this.currentUser) {

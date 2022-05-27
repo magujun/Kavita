@@ -52,11 +52,4 @@ export interface Series {
      * Number of words in the series
      */
     wordCount: number;
-    minHoursToRead: number;
-    maxHoursToRead: number;
-    avgHoursToRead: number;
-    /**
-     * Highest level folder containing this series
-     */
-    folderPath: string;
 }
