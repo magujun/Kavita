@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { NgxFileDropEntry, FileSystemFileEntry } from 'ngx-file-drop';
 import { fromEvent, Subject } from 'rxjs';
@@ -14,8 +14,7 @@ export type SelectCoverFunction = (selectedCover: string) => void;
 @Component({
   selector: 'app-cover-image-chooser',
   templateUrl: './cover-image-chooser.component.html',
-  styleUrls: ['./cover-image-chooser.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./cover-image-chooser.component.scss']
 })
 export class CoverImageChooserComponent implements OnInit, OnDestroy {
 
@@ -59,19 +58,17 @@ export class CoverImageChooserComponent implements OnInit, OnDestroy {
   appliedIndex: number = 0;
   form!: FormGroup;
   files: NgxFileDropEntry[] = [];
-  acceptableExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].join(',');
 
   mode: 'file' | 'url' | 'all' = 'all';
   private readonly onDestroy = new Subject<void>();
 
   constructor(public imageService: ImageService, private fb: FormBuilder, private toastr: ToastrService, private uploadService: UploadService,
-    @Inject(DOCUMENT) private document: Document, private readonly cdRef: ChangeDetectorRef) { }
+    @Inject(DOCUMENT) private document: Document) { }
 
   ngOnInit(): void {
     this.form = this.fb.group({
       coverImageUrl: new FormControl('', [])
     });
-    this.cdRef.markForCheck();
   }
 
   ngOnDestroy() {
@@ -89,14 +86,13 @@ export class CoverImageChooserComponent implements OnInit, OnDestroy {
     }
 
     ctx.drawImage(img, 0, 0);
-    const dataURL = canvas.toDataURL("image/png");
+    var dataURL = canvas.toDataURL("image/png");
     return dataURL;
   }
 
   selectImage(index: number) {
     if (this.selectedIndex === index) { return; }
     this.selectedIndex = index;
-    this.cdRef.markForCheck();
     this.imageSelected.emit(this.selectedIndex);
     this.selectedBase64Url.emit(this.imageUrls[this.selectedIndex]);
   }
@@ -105,7 +101,6 @@ export class CoverImageChooserComponent implements OnInit, OnDestroy {
     if (this.showApplyButton) {
       this.applyCover.emit(this.imageUrls[index]);
       this.appliedIndex = index;
-      this.cdRef.markForCheck();
     }
   }
 
@@ -117,27 +112,25 @@ export class CoverImageChooserComponent implements OnInit, OnDestroy {
 
   loadImage() {
     const url = this.form.get('coverImageUrl')?.value.trim();
-    if (!url && url === '') return;
+    if (url && url != '') {
 
-    this.uploadService.uploadByUrl(url).subscribe(filename => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.src = this.imageService.getCoverUploadImage(filename);
-      img.onload = (e) => this.handleUrlImageAdd(img);
-      img.onerror = (e) => {
-        this.toastr.error('The image could not be fetched due to server refusing request. Please download and upload from file instead.');
+      this.uploadService.uploadByUrl(url).subscribe(filename => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = this.imageService.getCoverUploadImage(filename);
+        img.onload = (e) => this.handleUrlImageAdd(img);
+        img.onerror = (e) => {
+          this.toastr.error('The image could not be fetched due to server refusing request. Please download and upload from file instead.');
+          this.form.get('coverImageUrl')?.setValue('');
+        };
         this.form.get('coverImageUrl')?.setValue('');
-        this.cdRef.markForCheck();
-      };
-      this.form.get('coverImageUrl')?.setValue('');
-      this.cdRef.markForCheck();
-    });
+      });
+    }
   }
 
   changeMode(mode: 'url') {
     this.mode = mode;
     this.setupEnterHandler();
-    this.cdRef.markForCheck();
 
     setTimeout(() => (this.document.querySelector('#load-image') as HTMLInputElement)?.focus(), 10);
   }
@@ -166,14 +159,12 @@ export class CoverImageChooserComponent implements OnInit, OnDestroy {
     this.selectedIndex += 1;
     this.imageSelected.emit(this.selectedIndex); // Auto select newly uploaded image
     this.selectedBase64Url.emit(e.target.result);
-    this.cdRef.markForCheck();
   }
 
   handleUrlImageAdd(img: HTMLImageElement) {
     const url = this.getBase64Image(img);
     this.imageUrls.push(url);
     this.imageUrlsChange.emit(this.imageUrls);
-    this.cdRef.markForCheck();
 
     setTimeout(() => {
       // Auto select newly uploaded image and tell parent of new base64 url

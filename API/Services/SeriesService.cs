@@ -105,6 +105,7 @@ public class SeriesService : ISeriesService
                 series.Metadata.LanguageLocked = true;
             }
 
+
             series.Metadata.CollectionTags ??= new List<CollectionTag>();
             UpdateRelatedList(updateSeriesMetadataDto.CollectionTags, series, allCollectionTags, (tag) =>
             {
@@ -199,11 +200,10 @@ public class SeriesService : ISeriesService
         return false;
     }
 
-
+    // TODO: Move this to a helper so we can easily test
     private static void UpdateRelatedList(ICollection<CollectionTagDto> tags, Series series, IReadOnlyCollection<CollectionTag> allTags,
         Action<CollectionTag> handleAdd)
     {
-        // TODO: Move UpdateRelatedList to a helper so we can easily test
         if (tags == null) return;
         // I want a union of these 2 lists. Return only elements that are in both lists, but the list types are different
         var existingTags = series.Metadata.CollectionTags.ToList();
@@ -422,16 +422,7 @@ public class SeriesService : ISeriesService
             }
 
             var series = await _unitOfWork.SeriesRepository.GetSeriesByIdsAsync(seriesIds);
-            var libraryIds = series.Select(s => s.LibraryId);
-            var libraries = await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(libraryIds);
-            foreach (var library in libraries)
-            {
-                library.LastModified = DateTime.Now;
-                _unitOfWork.LibraryRepository.Update(library);
-            }
-
             _unitOfWork.SeriesRepository.Remove(series);
-
 
             if (!_unitOfWork.HasChanges() || !await _unitOfWork.CommitAsync()) return true;
 
@@ -494,7 +485,8 @@ public class SeriesService : ISeriesService
             if (v.Number == 0) return c;
             c.VolumeTitle = v.Name;
             return c;
-        }).OrderBy(c => float.Parse(c.Number), new ChapterSortComparer()));
+        })).ToList();
+
 
         foreach (var chapter in chapters)
         {
@@ -513,7 +505,8 @@ public class SeriesService : ISeriesService
         } else
         {
             retChapters = chapters
-                .Where(ShouldIncludeChapter);
+                .Where(ShouldIncludeChapter)
+                .OrderBy(c => float.Parse(c.Number), new ChapterSortComparer());
         }
 
         var storylineChapters = volumes

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { forkJoin, Observable, of, Subject } from 'rxjs';
@@ -34,8 +34,7 @@ enum TabID {
 @Component({
   selector: 'app-edit-series-modal',
   templateUrl: './edit-series-modal.component.html',
-  styleUrls: ['./edit-series-modal.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./edit-series-modal.component.scss']
 })
 export class EditSeriesModalComponent implements OnInit, OnDestroy {
 
@@ -110,8 +109,7 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
               private libraryService: LibraryService,
               private collectionService: CollectionTagService,
               private uploadService: UploadService,
-              private metadataService: MetadataService, 
-              private readonly cdRef: ChangeDetectorRef) { }
+              private metadataService: MetadataService) { }
 
   ngOnInit(): void {
     this.imageUrls.push(this.imageService.getSeriesCoverImage(this.series.id));
@@ -138,23 +136,19 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
       publicationStatus: new FormControl('', []),
       language: new FormControl('', []),
     });
-    this.cdRef.markForCheck();
 
 
     this.metadataService.getAllAgeRatings().subscribe(ratings => {
       this.ageRatings = ratings;
-      this.cdRef.markForCheck();
     });
 
     this.metadataService.getAllPublicationStatus().subscribe(statuses => {
       this.publicationStatuses = statuses;
-      this.cdRef.markForCheck();
     });
 
     this.metadataService.getAllValidLanguages().subscribe(validLanguages => {
       this.validLanguages = validLanguages;
-      this.cdRef.markForCheck();
-    });
+    })
 
     this.seriesService.getMetadata(this.series.id).subscribe(metadata => {
       if (metadata) {
@@ -165,46 +159,38 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
         this.editSeriesForm.get('ageRating')?.patchValue(this.metadata.ageRating);
         this.editSeriesForm.get('publicationStatus')?.patchValue(this.metadata.publicationStatus);
         this.editSeriesForm.get('language')?.patchValue(this.metadata.language);
-        this.cdRef.markForCheck();
 
         this.editSeriesForm.get('name')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.series.nameLocked = true;
-          this.cdRef.markForCheck();
         });
 
         this.editSeriesForm.get('sortName')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.series.sortNameLocked = true;
-          this.cdRef.markForCheck();
         });
 
         this.editSeriesForm.get('localizedName')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.series.localizedNameLocked = true;
-          this.cdRef.markForCheck();
         });
 
         this.editSeriesForm.get('summary')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.metadata.summaryLocked = true;
           this.metadata.summary = val;
-          this.cdRef.markForCheck();
         });
 
 
         this.editSeriesForm.get('ageRating')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.metadata.ageRating = parseInt(val + '', 10);
           this.metadata.ageRatingLocked = true;
-          this.cdRef.markForCheck();
         });
 
         this.editSeriesForm.get('publicationStatus')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
           this.metadata.publicationStatus = parseInt(val + '', 10);
           this.metadata.publicationStatusLocked = true;
-          this.cdRef.markForCheck();
         });
       }
     });
 
     this.isLoadingVolumes = true;
-    this.cdRef.markForCheck();
     this.seriesService.getVolumes(this.series.id).subscribe(volumes => {
       this.seriesVolumes = volumes;
       this.isLoadingVolumes = false;
@@ -218,7 +204,6 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
           return f;
         })).flat();
       });
-      this.cdRef.markForCheck();
     });
   }
 
@@ -236,7 +221,6 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
       this.setupLanguageTypeahead()
     ]).subscribe(results => {
       this.collectionTags = this.metadata.collectionTags;
-      this.cdRef.markForCheck();
     });
   }
 
@@ -417,7 +401,7 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
   }
 
   close() {
-    this.modal.close({success: false, series: undefined, coverImageUpdate: this.coverImageReset});
+    this.modal.close({success: false, series: undefined});
   }
 
   fetchCollectionTags(filter: string = '') {
@@ -457,26 +441,25 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
 
     this.saveNestedComponents.emit();
 
+
+
     forkJoin(apis).subscribe(results => {
-      this.modal.close({success: true, series: model, coverImageUpdate: selectedIndex > 0 || this.coverImageReset});
+      this.modal.close({success: true, series: model, coverImageUpdate: selectedIndex > 0});
     });
   }
 
   updateCollections(tags: CollectionTag[]) {
     this.collectionTags = tags;
-    this.cdRef.markForCheck();
   }
 
   updateTags(tags: Tag[]) {
     this.tags = tags;
     this.metadata.tags = tags;
-    this.cdRef.markForCheck();
   }
 
   updateGenres(genres: Genre[]) {
     this.genres = genres;
     this.metadata.genres = genres;
-    this.cdRef.markForCheck();
   }
 
   updateLanguage(language: Array<Language>) {
@@ -485,7 +468,6 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
       return;
     }
     this.metadata.language = language[0].isoCode;
-    this.cdRef.markForCheck();
   }
 
   updatePerson(persons: Person[], role: PersonRole) {
@@ -519,20 +501,18 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
         break;
       case PersonRole.Translator:
         this.metadata.translators = persons;
+
     }
-    this.cdRef.markForCheck();
   }
 
   updateSelectedIndex(index: number) {
     this.editSeriesForm.patchValue({
       coverImageIndex: index
     });
-    this.cdRef.markForCheck();
   }
 
   updateSelectedImage(url: string) {
     this.selectedCover = url;
-    this.cdRef.markForCheck();
   }
 
   handleReset() {
@@ -540,14 +520,12 @@ export class EditSeriesModalComponent implements OnInit, OnDestroy {
     this.editSeriesForm.patchValue({
       coverImageLocked: false
     });
-    this.cdRef.markForCheck();
   }
 
   unlock(b: any, field: string) {
     if (b) {
       b[field] = !b[field];
     }
-    this.cdRef.markForCheck();
   }
 
 }

@@ -11,8 +11,8 @@ using API.Entities;
 using API.Entities.Enums;
 using API.Extensions;
 using API.Services;
+using API.SignalR;
 using Hangfire;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -28,42 +28,41 @@ namespace API.Controllers
         private readonly ILogger<ReaderController> _logger;
         private readonly IReaderService _readerService;
         private readonly IBookmarkService _bookmarkService;
+        private readonly IEventHub _eventHub;
 
         /// <inheritdoc />
         public ReaderController(ICacheService cacheService,
             IUnitOfWork unitOfWork, ILogger<ReaderController> logger,
-            IReaderService readerService, IBookmarkService bookmarkService)
+            IReaderService readerService, IBookmarkService bookmarkService,
+            IEventHub eventHub)
         {
             _cacheService = cacheService;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _readerService = readerService;
             _bookmarkService = bookmarkService;
+            _eventHub = eventHub;
         }
 
         /// <summary>
         /// Returns the PDF for the chapterId.
         /// </summary>
+        /// <param name="apiKey">API Key for user to validate they have access</param>
         /// <param name="chapterId"></param>
         /// <returns></returns>
         [HttpGet("pdf")]
-        [ResponseCache(CacheProfileName = "Hour")]
         public async Task<ActionResult> GetPdf(int chapterId)
         {
+
             var chapter = await _cacheService.Ensure(chapterId);
             if (chapter == null) return BadRequest("There was an issue finding pdf file for reading");
 
-            // Validate the user has access to the PDF
-            var series = await _unitOfWork.SeriesRepository.GetSeriesForChapter(chapter.Id,
-                await _unitOfWork.UserRepository.GetUserIdByUsernameAsync(User.GetUsername()));
-            if (series == null) return BadRequest("Invalid Access");
-
             try
             {
-
                 var path = _cacheService.GetCachedFile(chapter);
                 if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"Pdf doesn't exist when it should.");
 
+                Response.AddCacheHeader(path, TimeSpan.FromMinutes(60).Seconds);
                 return PhysicalFile(path, "application/pdf", Path.GetFileName(path), true);
             }
             catch (Exception)
@@ -80,8 +79,6 @@ namespace API.Controllers
         /// <param name="page"></param>
         /// <returns></returns>
         [HttpGet("image")]
-        [ResponseCache(CacheProfileName = "Hour")]
-        [AllowAnonymous]
         public async Task<ActionResult> GetImage(int chapterId, int page)
         {
             if (page < 0) page = 0;
@@ -91,10 +88,11 @@ namespace API.Controllers
             try
             {
                 var path = _cacheService.GetCachedPagePath(chapter, page);
-                if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"No such image for page {page}. Try refreshing to allow re-cache.");
+                if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"No such image for page {page}");
                 var format = Path.GetExtension(path).Replace(".", "");
 
-                return PhysicalFile(path, "image/" + format, Path.GetFileName(path), true);
+                Response.AddCacheHeader(path, TimeSpan.FromMinutes(10).Seconds);
+                return PhysicalFile(path, "image/" + format, Path.GetFileName(path));
             }
             catch (Exception)
             {
@@ -112,14 +110,10 @@ namespace API.Controllers
         /// <remarks>We must use api key as bookmarks could be leaked to other users via the API</remarks>
         /// <returns></returns>
         [HttpGet("bookmark-image")]
-        [ResponseCache(CacheProfileName = "Hour")]
-        [AllowAnonymous]
         public async Task<ActionResult> GetBookmarkImage(int seriesId, string apiKey, int page)
         {
             if (page < 0) page = 0;
             var userId = await _unitOfWork.UserRepository.GetUserIdByApiKeyAsync(apiKey);
-
-            // NOTE: I'm not sure why I need this flow here
             var totalPages = await _cacheService.CacheBookmarkForSeries(userId, seriesId);
             if (page > totalPages)
             {
@@ -132,6 +126,7 @@ namespace API.Controllers
                 if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"No such image for page {page}");
                 var format = Path.GetExtension(path).Replace(".", "");
 
+                Response.AddCacheHeader(path, TimeSpan.FromMinutes(10).Seconds);
                 return PhysicalFile(path, "image/" + format, Path.GetFileName(path));
             }
             catch (Exception)
@@ -157,9 +152,9 @@ namespace API.Controllers
             if (dto == null) return BadRequest("Please perform a scan on this series or library and try again");
             var mangaFile = (await _unitOfWork.ChapterRepository.GetFilesForChapterAsync(chapterId)).First();
 
-            var info = new ChapterInfoDto()
+            return Ok(new ChapterInfoDto()
             {
-                ChapterNumber = dto.ChapterNumber,
+                ChapterNumber =  dto.ChapterNumber,
                 VolumeNumber = dto.VolumeNumber,
                 VolumeId = dto.VolumeId,
                 FileName = Path.GetFileName(mangaFile.FilePath),
@@ -169,33 +164,8 @@ namespace API.Controllers
                 LibraryId = dto.LibraryId,
                 IsSpecial = dto.IsSpecial,
                 Pages = dto.Pages,
-                ChapterTitle = dto.ChapterTitle ?? string.Empty,
-                Subtitle = string.Empty,
-                Title = dto.SeriesName
-            };
-
-            if (info.ChapterTitle is {Length: > 0}) {
-                info.Title += " - " + info.ChapterTitle;
-            }
-
-            if (info.IsSpecial && dto.VolumeNumber.Equals(Parser.Parser.DefaultVolume))
-            {
-                info.Subtitle = info.FileName;
-            } else if (!info.IsSpecial && info.VolumeNumber.Equals(Parser.Parser.DefaultVolume))
-            {
-                info.Subtitle = _readerService.FormatChapterName(info.LibraryType, true, true) + info.ChapterNumber;
-            }
-            else
-            {
-                info.Subtitle = "Volume " + info.VolumeNumber;
-                if (!info.ChapterNumber.Equals(Parser.Parser.DefaultChapter))
-                {
-                    info.Subtitle += " " + _readerService.FormatChapterName(info.LibraryType, true, true) +
-                                     info.ChapterNumber;
-                }
-            }
-
-            return Ok(info);
+                ChapterTitle = dto.ChapterTitle ?? string.Empty
+            });
         }
 
         /// <summary>
@@ -221,11 +191,6 @@ namespace API.Controllers
         }
 
 
-        /// <summary>
-        /// Marks a Series as read. All volumes and chapters will be marked as read during this process.
-        /// </summary>
-        /// <param name="markReadDto"></param>
-        /// <returns></returns>
         [HttpPost("mark-read")]
         public async Task<ActionResult> MarkRead(MarkReadDto markReadDto)
         {
@@ -239,7 +204,7 @@ namespace API.Controllers
 
 
         /// <summary>
-        /// Marks a Series as Unread. All volumes and chapters will be marked as unread during this process.
+        /// Marks a Series as Unread (progress)
         /// </summary>
         /// <param name="markReadDto"></param>
         /// <returns></returns>
@@ -265,7 +230,7 @@ namespace API.Controllers
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Progress);
 
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersAsync(markVolumeReadDto.VolumeId);
-            await _readerService.MarkChaptersAsUnread(user, markVolumeReadDto.SeriesId, chapters);
+            _readerService.MarkChaptersAsUnread(user, markVolumeReadDto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -288,7 +253,7 @@ namespace API.Controllers
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Progress);
 
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersAsync(markVolumeReadDto.VolumeId);
-            await _readerService.MarkChaptersAsRead(user, markVolumeReadDto.SeriesId, chapters);
+            _readerService.MarkChaptersAsRead(user, markVolumeReadDto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -318,7 +283,7 @@ namespace API.Controllers
                 chapterIds.Add(chapterId);
             }
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersByIdsAsync(chapterIds);
-            await _readerService.MarkChaptersAsRead(user, dto.SeriesId, chapters);
+            _readerService.MarkChaptersAsRead(user, dto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -347,7 +312,7 @@ namespace API.Controllers
                 chapterIds.Add(chapterId);
             }
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersByIdsAsync(chapterIds);
-            await _readerService.MarkChaptersAsUnread(user, dto.SeriesId, chapters);
+            _readerService.MarkChaptersAsUnread(user, dto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -373,7 +338,7 @@ namespace API.Controllers
             var volumes = await _unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(dto.SeriesIds.ToArray(), true);
             foreach (var volume in volumes)
             {
-                await _readerService.MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
+                _readerService.MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
             }
 
             _unitOfWork.UserRepository.Update(user);
@@ -400,7 +365,7 @@ namespace API.Controllers
             var volumes = await _unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(dto.SeriesIds.ToArray(), true);
             foreach (var volume in volumes)
             {
-                await _readerService.MarkChaptersAsUnread(user, volume.SeriesId, volume.Chapters);
+                _readerService.MarkChaptersAsUnread(user, volume.SeriesId, volume.Chapters);
             }
 
             _unitOfWork.UserRepository.Update(user);
@@ -555,7 +520,6 @@ namespace API.Controllers
         {
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Bookmarks);
             if (user.Bookmarks == null) return Ok("Nothing to remove");
-
             try
             {
                 var bookmarksToRemove = user.Bookmarks.Where(bmk => bmk.SeriesId == dto.SeriesId).ToList();
@@ -582,42 +546,7 @@ namespace API.Controllers
             }
 
             return BadRequest("Could not clear bookmarks");
-        }
 
-        /// <summary>
-        /// Removes all bookmarks for all chapters linked to a Series
-        /// </summary>
-        /// <param name="dto"></param>
-        /// <returns></returns>
-        [HttpPost("bulk-remove-bookmarks")]
-        public async Task<ActionResult> BulkRemoveBookmarks(BulkRemoveBookmarkForSeriesDto dto)
-        {
-            var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Bookmarks);
-            if (user.Bookmarks == null) return Ok("Nothing to remove");
-
-            try
-            {
-                foreach (var seriesId in dto.SeriesIds)
-                {
-                    var bookmarksToRemove = user.Bookmarks.Where(bmk => bmk.SeriesId == seriesId).ToList();
-                    user.Bookmarks = user.Bookmarks.Where(bmk => bmk.SeriesId != seriesId).ToList();
-                    _unitOfWork.UserRepository.Update(user);
-                    await _bookmarkService.DeleteBookmarkFiles(bookmarksToRemove);
-                }
-
-
-                if (!_unitOfWork.HasChanges() || await _unitOfWork.CommitAsync())
-                {
-                    return Ok();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "There was an exception when trying to clear bookmarks");
-                await _unitOfWork.RollbackAsync();
-            }
-
-            return BadRequest("Could not clear bookmarks");
         }
 
         /// <summary>

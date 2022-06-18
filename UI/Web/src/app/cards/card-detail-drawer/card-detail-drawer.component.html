@@ -16,8 +16,8 @@
                     <div class="container-fluid" style="overflow: auto">
 
                         <div class="row g-0">
-                            <div class="d-none d-md-block col-md-2 col-lg-1">         
-                                <app-image class="me-2" width="74px" [imageUrl]="coverImageUrl"></app-image>
+                            <div class="d-none d-md-block col-md-2 col-lg-1">            
+                                <app-image class="me-2" width="74px" [imageUrl]="chapter.coverImage"></app-image>
                             </div> 
                             <div class="col-md-10 col-lg-11">
                                 <ng-container *ngIf="summary.length > 0; else noSummary">
@@ -95,7 +95,7 @@
                 </ng-template>
             </li>
 
-            <li [ngbNavItem]="tabs[TabID.Cover]" [disabled]="!(isAdmin$ | async)">
+            <li [ngbNavItem]="tabs[TabID.Cover]">
                 <a ngbNavLink>{{tabs[TabID.Cover].title}}</a>
                 <ng-template ngbNavContent>
                     <app-cover-image-chooser [(imageUrls)]="imageUrls" 
@@ -108,14 +108,14 @@
                 </ng-template>
             </li>
 
-            <li [ngbNavItem]="tabs[TabID.Files]" [disabled]="!(isAdmin$ | async)">
+            <li [ngbNavItem]="tabs[TabID.Files]">
                 <a ngbNavLink>{{tabs[TabID.Files].title}}</a>
                 <ng-template ngbNavContent>
                     <h4 *ngIf="!utilityService.isChapter(data)">{{utilityService.formatChapterName(libraryType) + 's'}}</h4>
                     <ul class="list-unstyled">
                         <li class="d-flex my-4" *ngFor="let chapter of chapters">
                             <a (click)="readChapter(chapter)" href="javascript:void(0);" title="Read {{utilityService.formatChapterName(libraryType, true, false)}} {{formatChapterNumber(chapter)}}">
-                                <app-image class="me-2" width="74px" [imageUrl]="imageService.getChapterCoverImage(chapter.id)"></app-image>
+                                <app-image class="me-2" width="74px" [imageUrl]="chapter.coverImage"></app-image>
                             </a>
                             <div class="flex-grow-1">
                                 <h5 class="mt-0 mb-1">
@@ -143,15 +143,7 @@
                                                 Pages: {{file.pages | number:''}}
                                             </div>
                                             <div class="col" *ngIf="data.hasOwnProperty('created')">
-                                                Added: 
-                                                <!-- TODO: This data.created can be removed after v0.5.5 release -->
-                                                <ng-container *ngIf="file.created == '0001-01-01T00:00:00'; else fileDate">
-                                                    {{(data.created | date: 'short') || '-'}}
-                                                </ng-container>
-                                                <ng-template #fileDate>
-                                                    {{(file.created | date: 'short') || '-'}}
-                                                </ng-template>
-                                                
+                                                Added: {{(data.created | date: 'short') || '-'}}
                                             </div>
                                         </div>
                                     </li>

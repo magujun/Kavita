@@ -1,13 +1,14 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Location } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgxExtendedPdfViewerService, PageViewModeType, ProgressBarEvent } from 'ngx-extended-pdf-viewer';
+import { PageViewModeType } from 'ngx-extended-pdf-viewer';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, take } from 'rxjs';
 import { BookService } from 'src/app/book-reader/book.service';
-import { KEY_CODES } from 'src/app/shared/_services/utility.service';
 import { Chapter } from 'src/app/_models/chapter';
 import { User } from 'src/app/_models/user';
 import { AccountService } from 'src/app/_services/account.service';
+import { MemberService } from 'src/app/_services/member.service';
 import { NavService } from 'src/app/_services/nav.service';
 import { CHAPTER_ID_DOESNT_EXIST, ReaderService } from 'src/app/_services/reader.service';
 import { SeriesService } from 'src/app/_services/series.service';
@@ -16,8 +17,7 @@ import { ThemeService } from 'src/app/_services/theme.service';
 @Component({
   selector: 'app-pdf-reader',
   templateUrl: './pdf-reader.component.html',
-  styleUrls: ['./pdf-reader.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./pdf-reader.component.scss']
 })
 export class PdfReaderComponent implements OnInit, OnDestroy {
 
@@ -63,11 +63,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   backgroundColor: string = this.themeMap[this.theme].background;
   fontColor: string = this.themeMap[this.theme].font;
 
-  isLoading: boolean = true;
-  /**
-   * How much of the current document is loaded
-   */
-  loadPrecent: number = 0;
+  isLoading: boolean = false;
 
   /**
    * This can't be updated dynamically: 
@@ -77,21 +73,13 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
 
   private readonly onDestroy = new Subject<void>();
 
-  constructor(private route: ActivatedRoute, private router: Router, public accountService: AccountService,
+  constructor(private route: ActivatedRoute, private router: Router, private accountService: AccountService,
     private seriesService: SeriesService, public readerService: ReaderService,
     private navService: NavService, private toastr: ToastrService,
-    private bookService: BookService, private themeService: ThemeService, 
-    private readonly cdRef: ChangeDetectorRef, private pdfViewerService: NgxExtendedPdfViewerService) {
+    private bookService: BookService, private themeService: ThemeService, private location: Location) {
       this.navService.hideNavBar();
       this.themeService.clearThemes();
       this.navService.hideSideNav();
-  }
-
-  @HostListener('window:keyup', ['$event'])
-  handleKeyPress(event: KeyboardEvent) {
-    if (event.key === KEY_CODES.ESC_KEY) {
-      this.closeReader();
-    }
   }
 
   ngOnDestroy(): void {
@@ -129,8 +117,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       this.readingListId = parseInt(readingListId, 10);
     }
 
-    this.cdRef.markForCheck();
-
     this.accountService.currentUser$.pipe(take(1)).subscribe(user => {
       if (user) {
         this.user = user;
@@ -143,12 +129,10 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     this.bookService.getBookInfo(this.chapterId).subscribe(info => {
       this.volumeId = info.volumeId;
       this.bookTitle = info.bookTitle;
-      this.cdRef.markForCheck();
     });
 
     this.readerService.getProgress(this.chapterId).subscribe(progress => {
       this.currentPage = progress.pageNum || 1;
-      this.cdRef.markForCheck();
     });
 
     this.seriesService.getChapter(this.chapterId).subscribe(chapter => {
@@ -158,7 +142,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.currentPage = this.maxPages - 1;
         this.saveProgress();
       }
-      this.cdRef.markForCheck();
     });
 
   }
@@ -172,7 +155,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     window.history.replaceState({}, '', newRoute);
     this.toastr.info('Incognito mode is off. Progress will now start being tracked.');
     this.saveProgress();
-    this.cdRef.markForCheck();
   }
 
   toggleTheme() {
@@ -183,7 +165,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     }
     this.backgroundColor = this.themeMap[this.theme].background;
     this.fontColor = this.themeMap[this.theme].font;
-    this.cdRef.markForCheck();
   }
 
   toggleBookPageMode() {
@@ -192,7 +173,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     } else {
       this.bookMode = 'book';
     }
-    this.cdRef.markForCheck();
   }
 
   saveProgress() {
@@ -201,17 +181,11 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   }
 
   closeReader() {
-    this.readerService.closeReader(this.readingListMode, this.readingListId);
-  }
-
-  updateLoading(state: boolean) {
-    this.isLoading = state;
-    this.cdRef.markForCheck();
-  }
-
-  updateLoadProgress(event: ProgressBarEvent) {
-    this.loadPrecent = event.percent;
-    this.cdRef.markForCheck();
+    if (this.readingListMode) {
+      this.router.navigateByUrl('lists/' + this.readingListId);
+    } else {
+      this.location.back();
+    }
   }
 
 }

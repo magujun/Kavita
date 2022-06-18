@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { take, Subject } from 'rxjs';
+import { take, takeWhile, finalize, Subject, forkJoin } from 'rxjs';
 import { BulkSelectionService } from 'src/app/cards/bulk-selection.service';
 import { ConfirmService } from 'src/app/shared/confirm.service';
 import { DownloadService } from 'src/app/shared/_services/download.service';
@@ -16,8 +16,7 @@ import { SeriesService } from 'src/app/_services/series.service';
 @Component({
   selector: 'app-bookmarks',
   templateUrl: './bookmarks.component.html',
-  styleUrls: ['./bookmarks.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./bookmarks.component.scss']
 })
 export class BookmarksComponent implements OnInit, OnDestroy {
 
@@ -30,7 +29,6 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   actions: ActionItem<Series>[] = [];
 
   trackByIdentity = (index: number, item: Series) => `${item.name}_${item.localizedName}_${item.pagesRead}`;
-  refresh: EventEmitter<void> = new EventEmitter();
 
   private onDestroy: Subject<void> = new Subject<void>();
   
@@ -38,7 +36,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
     private downloadService: DownloadService, private toastr: ToastrService,
     private confirmService: ConfirmService, public bulkSelectionService: BulkSelectionService, 
     public imageService: ImageService, private actionFactoryService: ActionFactoryService,
-    private router: Router, private readonly cdRef: ChangeDetectorRef) { }
+    private router: Router) { }
 
   ngOnInit(): void {
     this.loadBookmarks();
@@ -88,22 +86,23 @@ export class BookmarksComponent implements OnInit, OnDestroy {
 
     switch (action) {
       case Action.DownloadBookmark:
-        this.downloadService.download('bookmark', this.bookmarks.filter(bmk => seriesIds.includes(bmk.seriesId)), (d) => {
-          if (!d) {
+        this.downloadService.downloadBookmarks(this.bookmarks.filter(bmk => seriesIds.includes(bmk.seriesId))).pipe(
+          takeWhile(val => {
+            return val.state != 'DONE';
+          })).subscribe(() => {
             this.bulkSelectionService.deselectAll();
-          }
-        });
+          });
         break;
       case Action.Delete:
         if (!await this.confirmService.confirm('Are you sure you want to clear all bookmarks for multiple series? This cannot be undone.')) {
           break;
         }
-
-        this.readerService.clearMultipleBookmarks(seriesIds).subscribe(() => {
+        
+        forkJoin(seriesIds.map(id => this.readerService.clearBookmarks(id))).subscribe(() => {
           this.toastr.success('Bookmarks have been removed');
           this.bulkSelectionService.deselectAll();
           this.loadBookmarks();
-        });
+        })
         break;
       default:
         break;
@@ -112,7 +111,6 @@ export class BookmarksComponent implements OnInit, OnDestroy {
 
   loadBookmarks() {
     this.loadingBookmarks = true;
-    this.cdRef.markForCheck();
     this.readerService.getAllBookmarks().pipe(take(1)).subscribe(bookmarks => {
       this.bookmarks = bookmarks;
       this.seriesIds = {};
@@ -130,9 +128,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
       this.seriesService.getAllSeriesByIds(ids).subscribe(series => {
         this.series = series;
         this.loadingBookmarks = false;
-        this.cdRef.markForCheck();
       });
-      this.cdRef.markForCheck();
     });
   }
 
@@ -146,7 +142,6 @@ export class BookmarksComponent implements OnInit, OnDestroy {
     }
 
     this.clearingSeries[series.id] = true;
-    this.cdRef.markForCheck();
     this.readerService.clearBookmarks(series.id).subscribe(() => {
       const index = this.series.indexOf(series);
       if (index > -1) {
@@ -154,8 +149,6 @@ export class BookmarksComponent implements OnInit, OnDestroy {
       }
       this.clearingSeries[series.id] = false;
       this.toastr.success(series.name + '\'s bookmarks have been removed');
-      this.refresh.emit();
-      this.cdRef.markForCheck();
     });
   }
 
@@ -165,13 +158,13 @@ export class BookmarksComponent implements OnInit, OnDestroy {
 
   downloadBookmarks(series: Series) {
     this.downloadingSeries[series.id] = true;
-    this.cdRef.markForCheck();
-    this.downloadService.download('bookmark', this.bookmarks.filter(bmk => bmk.seriesId === series.id), (d) => {
-      if (!d) {
+    this.downloadService.downloadBookmarks(this.bookmarks.filter(bmk => bmk.seriesId === series.id)).pipe(
+      takeWhile(val => {
+        return val.state != 'DONE';
+      }),
+      finalize(() => {
         this.downloadingSeries[series.id] = false;
-        this.cdRef.markForCheck();
-      }
-    });
+      })).subscribe(() => {/* No Operation */});
   }
 
 }

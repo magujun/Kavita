@@ -1,44 +1,28 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit } from '@angular/core';
-import { Subject, takeUntil } from 'rxjs';
+import { Component, Input, OnInit } from '@angular/core';
 import { Action, ActionItem } from 'src/app/_services/action-factory.service';
 import { BulkSelectionService } from '../bulk-selection.service';
 
 @Component({
   selector: 'app-bulk-operations',
   templateUrl: './bulk-operations.component.html',
-  styleUrls: ['./bulk-operations.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./bulk-operations.component.scss']
 })
-export class BulkOperationsComponent implements OnInit, OnDestroy {
+export class BulkOperationsComponent implements OnInit {
 
   @Input() actionCallback!: (action: Action, data: any) => void;
+  topOffset: number = 0;
 
-  topOffset: number = 56;
-  hasMarkAsRead: boolean = false;
-  hasMarkAsUnread: boolean = false;
-  actions: Array<ActionItem<any>> = [];
-
-  private onDestory: Subject<void> = new Subject();
-
-  get Action() {
-    return Action;
+  get actions() {
+    return this.bulkSelectionService.getActions(this.actionCallback.bind(this));
   }
 
-  constructor(public bulkSelectionService: BulkSelectionService, private readonly cdRef: ChangeDetectorRef) { }
+  constructor(public bulkSelectionService: BulkSelectionService) { }
 
   ngOnInit(): void {
-    this.bulkSelectionService.actions$.pipe(takeUntil(this.onDestory)).subscribe(actions => {
-      actions.forEach(a => a.callback = this.actionCallback.bind(this));
-      this.actions = actions;
-      this.hasMarkAsRead = this.actions.filter(act => act.action === Action.MarkAsRead).length > 0;
-      this.hasMarkAsUnread = this.actions.filter(act => act.action === Action.MarkAsUnread).length > 0;
-      this.cdRef.markForCheck();
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.onDestory.next();
-    this.onDestory.complete();
+    const navBar = document.querySelector('.navbar');
+    if (navBar) {
+      this.topOffset = Math.ceil(navBar.getBoundingClientRect().height); // TODO: We can make this fixed 63px
+    }
   }
 
   handleActionCallback(action: Action, data: any) {
@@ -51,10 +35,5 @@ export class BulkOperationsComponent implements OnInit, OnDestroy {
     }
   }
 
-  executeAction(action: Action) {
-    const foundActions = this.actions.filter(act => act.action === action);
-    if (foundActions.length > 0) {
-      this.performAction(foundActions[0]);
-    }
-  }
+
 }

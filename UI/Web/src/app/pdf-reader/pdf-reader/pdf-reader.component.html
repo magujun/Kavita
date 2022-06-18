@@ -1,23 +1,10 @@
-<div class="{{theme}}" *ngIf="accountService.currentUser$ | async as user">
-
-    <ng-container *ngIf="isLoading">
-        <div class="loading mx-auto" style="min-width: 200px; width: 600px;">
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            Loading...PDFs may take longer than expected
-        </div>
-        <div class="progress-container row g-0 align-items-center">
-            <div class="progress" style="height: 5px;">
-                <div class="progress-bar" role="progressbar" [ngStyle]="{'width': loadPrecent + '%'}" [attr.aria-valuenow]="loadPrecent" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-        </div>
-    </ng-container>
+<div class="{{theme}}">
     <ngx-extended-pdf-viewer
         #pdfViewer
         [src]="readerService.downloadPdf(this.chapterId)"
-        [authorization]="'Bearer ' + user.token"
         height="100vh"
         [(page)]="currentPage"
-        [textLayer]="true"
+        [textLayer]="true" 
         [useBrowserLocale]="false"
         [showHandToolButton]="true"
         [showOpenFileButton]="false"
@@ -28,7 +15,7 @@
         [showPropertiesButton]="false"
         [(zoom)]="zoomSetting"
         [showSecondaryToolbarButton]="true"
-
+        
         [showBorders]="true"
         [theme]="theme"
         [formTheme]="theme"
@@ -36,11 +23,8 @@
         [customToolbar]="multiToolbar"
 
         (pageChange)="saveProgress()"
-        (pdfLoadingStarts)="updateLoading(true)"
-        (pdfLoaded)="updateLoading(false)"
-        (progress)="updateLoadProgress($event)"
-    >
-
+    > 
+    
     </ngx-extended-pdf-viewer>
 
     <ng-template #multiToolbar>
@@ -79,12 +63,12 @@
                     <i class="toolbar-icon fa-solid {{this.theme === 'light' ? 'fa-sun' : 'fa-moon'}}" [ngStyle]="{color: fontColor}" aria-hidden="true"></i>
                     <span class="visually-hidden">{{this.theme === 'light' ? 'Light Theme' : 'Dark Theme'}}</span>
                 </button>
-
+    
                 <button class="btn btn-icon col-2 col-xs-1 toolbarButton" (click)="closeReader()">
                     <i class="toolbar-icon fa fa-times-circle" aria-hidden="true" [ngStyle]="{color: fontColor}"></i>
                     <span class="visually-hidden">Close Reader</span>
                 </button>
-
+    
                 <div class="verticalToolbarSeparator hiddenSmallView"></div>
                 <pdf-toggle-secondary-toolbar></pdf-toggle-secondary-toolbar>
             </div>

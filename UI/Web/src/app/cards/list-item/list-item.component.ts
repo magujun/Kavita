@@ -1,11 +1,12 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
-import { map, Observable, Subject, takeUntil } from 'rxjs';
+import { finalize, Observable, of, take, takeWhile } from 'rxjs';
 import { Download } from 'src/app/shared/_models/download';
-import { DownloadEvent, DownloadService } from 'src/app/shared/_services/download.service';
+import { DownloadService } from 'src/app/shared/_services/download.service';
 import { UtilityService } from 'src/app/shared/_services/utility.service';
 import { Chapter } from 'src/app/_models/chapter';
 import { LibraryType } from 'src/app/_models/library';
+import { Series } from 'src/app/_models/series';
 import { RelationKind } from 'src/app/_models/series-detail/relation-kind';
 import { Volume } from 'src/app/_models/volume';
 import { Action, ActionItem } from 'src/app/_services/action-factory.service';
@@ -13,10 +14,9 @@ import { Action, ActionItem } from 'src/app/_services/action-factory.service';
 @Component({
   selector: 'app-list-item',
   templateUrl: './list-item.component.html',
-  styleUrls: ['./list-item.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./list-item.component.scss']
 })
-export class ListItemComponent implements OnInit, OnDestroy {
+export class ListItemComponent implements OnInit {
 
   /**
    * Volume or Chapter to render
@@ -62,22 +62,17 @@ export class ListItemComponent implements OnInit, OnDestroy {
    * Show's the title if avaible on entity
    */
   @Input() showTitle: boolean = true;
-  /**
-   * Blur the summary for the list item
-   */
-  @Input() blur: boolean = false;
 
   @Output() read: EventEmitter<void> = new EventEmitter<void>();
 
   actionInProgress: boolean = false;
+  summary$: Observable<string> = of('');
   summary: string = '';
   isChapter: boolean = false;
   
 
-  download$: Observable<DownloadEvent | null> | null = null;
+  download$: Observable<Download> | null = null;
   downloadInProgress: boolean = false;
-
-  private readonly onDestroy = new Subject<void>();
 
   get Title() {
     if (this.isChapter) return (this.entity as Chapter).titleName;
@@ -85,30 +80,16 @@ export class ListItemComponent implements OnInit, OnDestroy {
   }
 
 
-  constructor(private utilityService: UtilityService, private downloadService: DownloadService, 
-    private toastr: ToastrService, private readonly cdRef: ChangeDetectorRef) { }
+  constructor(private utilityService: UtilityService, private downloadService: DownloadService, private toastr: ToastrService) { }
 
   ngOnInit(): void {
+
     this.isChapter = this.utilityService.isChapter(this.entity);
     if (this.isChapter) {
       this.summary = this.utilityService.asChapter(this.entity).summary || '';
     } else {
       this.summary = this.utilityService.asVolume(this.entity).chapters[0].summary || '';
     }
-
-    this.cdRef.markForCheck();
-
-
-    this.download$ = this.downloadService.activeDownloads$.pipe(takeUntil(this.onDestroy), map((events) => {
-      if(this.utilityService.isVolume(this.entity)) return events.find(e => e.entityType === 'volume' && e.subTitle === this.downloadService.downloadSubtitle('volume', (this.entity as Volume))) || null;
-      if(this.utilityService.isChapter(this.entity)) return events.find(e => e.entityType === 'chapter' && e.subTitle === this.downloadService.downloadSubtitle('chapter', (this.entity as Chapter))) || null;
-      return null;
-    }));
-  }
-
-  ngOnDestroy(): void {
-    this.onDestroy.next();
-    this.onDestroy.complete();
   }
 
   performAction(action: ActionItem<any>) {
@@ -117,18 +98,37 @@ export class ListItemComponent implements OnInit, OnDestroy {
         this.toastr.info('Download is already in progress. Please wait.');
         return;
       }
-
-      const statusUpdate = (d: Download | undefined) => {
-        if (d) return;
-        this.downloadInProgress = false;
-      };
-
+      
       if (this.utilityService.isVolume(this.entity)) {
         const volume = this.utilityService.asVolume(this.entity);
-        this.downloadService.download('volume', volume, statusUpdate);
+        this.downloadService.downloadVolumeSize(volume.id).pipe(take(1)).subscribe(async (size) => {
+          const wantToDownload = await this.downloadService.confirmSize(size, 'volume');
+          if (!wantToDownload) { return; }
+          this.downloadInProgress = true;
+          this.download$ = this.downloadService.downloadVolume(volume).pipe(
+            takeWhile(val => {
+              return val.state != 'DONE';
+            }),
+            finalize(() => {
+              this.download$ = null;
+              this.downloadInProgress = false;
+            }));
+        });
       } else if (this.utilityService.isChapter(this.entity)) {
         const chapter = this.utilityService.asChapter(this.entity);
-        this.downloadService.download('chapter', chapter, statusUpdate);
+        this.downloadService.downloadChapterSize(chapter.id).pipe(take(1)).subscribe(async (size) => {
+          const wantToDownload = await this.downloadService.confirmSize(size, 'chapter');
+          if (!wantToDownload) { return; }
+          this.downloadInProgress = true;
+          this.download$ = this.downloadService.downloadChapter(chapter).pipe(
+            takeWhile(val => {
+              return val.state != 'DONE';
+            }),
+            finalize(() => {
+              this.download$ = null;
+              this.downloadInProgress = false;
+            }));
+        });
       }
       return; // Don't propagate the download from a card
     }

@@ -1,7 +1,6 @@
 ﻿
 using System;
 using System.Collections.Generic;
-using API.Entities;
 using API.Entities.Interfaces;
 
 namespace API.DTOs
@@ -9,9 +8,7 @@ namespace API.DTOs
     public class VolumeDto : IHasReadTimeEstimate
     {
         public int Id { get; set; }
-        /// <inheritdoc cref="Volume.Number"/>
         public int Number { get; set; }
-        /// <inheritdoc cref="Volume.Name"/>
         public string Name { get; set; }
         public int Pages { get; set; }
         public int PagesRead { get; set; }

@@ -9,7 +9,6 @@ using API.Data.Repositories;
 using API.DTOs;
 using API.DTOs.Reader;
 using API.Entities;
-using API.Entities.Enums;
 using API.Extensions;
 using API.SignalR;
 using Kavita.Common;
@@ -21,8 +20,8 @@ public interface IReaderService
 {
     Task MarkSeriesAsRead(AppUser user, int seriesId);
     Task MarkSeriesAsUnread(AppUser user, int seriesId);
-    Task MarkChaptersAsRead(AppUser user, int seriesId, IEnumerable<Chapter> chapters);
-    Task MarkChaptersAsUnread(AppUser user, int seriesId, IEnumerable<Chapter> chapters);
+    void MarkChaptersAsRead(AppUser user, int seriesId, IEnumerable<Chapter> chapters);
+    void MarkChaptersAsUnread(AppUser user, int seriesId, IEnumerable<Chapter> chapters);
     Task<bool> SaveReadingProgress(ProgressDto progressDto, int userId);
     Task<int> CapPageToChapter(int chapterId, int page);
     Task<int> GetNextChapterIdAsync(int seriesId, int volumeId, int currentChapterId, int userId);
@@ -31,7 +30,6 @@ public interface IReaderService
     Task MarkChaptersUntilAsRead(AppUser user, int seriesId, float chapterNumber);
     Task MarkVolumesUntilAsRead(AppUser user, int seriesId, int volumeNumber);
     HourEstimateRangeDto GetTimeEstimate(long wordCount, int pageCount, bool isEpub);
-    string FormatChapterName(LibraryType libraryType, bool includeHash = false, bool includeSpace = false);
 }
 
 public class ReaderService : IReaderService
@@ -42,11 +40,11 @@ public class ReaderService : IReaderService
     private readonly ChapterSortComparer _chapterSortComparer = new ChapterSortComparer();
     private readonly ChapterSortComparerZeroFirst _chapterSortComparerForInChapterSorting = new ChapterSortComparerZeroFirst();
 
-    private const float MinWordsPerHour = 10260F;
-    private const float MaxWordsPerHour = 30000F;
+    public const float MinWordsPerHour = 10260F;
+    public const float MaxWordsPerHour = 30000F;
     public const float AvgWordsPerHour = (MaxWordsPerHour + MinWordsPerHour) / 2F;
-    private const float MinPagesPerMinute = 3.33F;
-    private const float MaxPagesPerMinute = 2.75F;
+    public const float MinPagesPerMinute = 3.33F;
+    public const float MaxPagesPerMinute = 2.75F;
     public const float AvgPagesPerMinute = (MaxPagesPerMinute + MinPagesPerMinute) / 2F;
 
 
@@ -73,7 +71,7 @@ public class ReaderService : IReaderService
         user.Progresses ??= new List<AppUserProgress>();
         foreach (var volume in volumes)
         {
-            await MarkChaptersAsRead(user, seriesId, volume.Chapters);
+            MarkChaptersAsRead(user, seriesId, volume.Chapters);
         }
 
         _unitOfWork.UserRepository.Update(user);
@@ -90,7 +88,7 @@ public class ReaderService : IReaderService
         user.Progresses ??= new List<AppUserProgress>();
         foreach (var volume in volumes)
         {
-            await MarkChaptersAsUnread(user, seriesId, volume.Chapters);
+            MarkChaptersAsUnread(user, seriesId, volume.Chapters);
         }
 
         _unitOfWork.UserRepository.Update(user);
@@ -102,7 +100,7 @@ public class ReaderService : IReaderService
     /// <param name="user"></param>
     /// <param name="seriesId"></param>
     /// <param name="chapters"></param>
-    public async Task MarkChaptersAsRead(AppUser user, int seriesId, IEnumerable<Chapter> chapters)
+    public void MarkChaptersAsRead(AppUser user, int seriesId, IEnumerable<Chapter> chapters)
     {
         foreach (var chapter in chapters)
         {
@@ -117,17 +115,12 @@ public class ReaderService : IReaderService
                     SeriesId = seriesId,
                     ChapterId = chapter.Id
                 });
-                await _eventHub.SendMessageAsync(MessageFactory.UserProgressUpdate,
-                    MessageFactory.UserProgressUpdateEvent(user.Id, user.UserName, seriesId, chapter.VolumeId, chapter.Id, chapter.Pages));
             }
             else
             {
                 userProgress.PagesRead = chapter.Pages;
                 userProgress.SeriesId = seriesId;
                 userProgress.VolumeId = chapter.VolumeId;
-
-                await _eventHub.SendMessageAsync(MessageFactory.UserProgressUpdate,
-                    MessageFactory.UserProgressUpdateEvent(user.Id, user.UserName, userProgress.SeriesId, userProgress.VolumeId, userProgress.ChapterId, chapter.Pages));
             }
         }
     }
@@ -138,7 +131,7 @@ public class ReaderService : IReaderService
     /// <param name="user"></param>
     /// <param name="seriesId"></param>
     /// <param name="chapters"></param>
-    public async Task MarkChaptersAsUnread(AppUser user, int seriesId, IEnumerable<Chapter> chapters)
+    public void MarkChaptersAsUnread(AppUser user, int seriesId, IEnumerable<Chapter> chapters)
     {
         foreach (var chapter in chapters)
         {
@@ -149,9 +142,6 @@ public class ReaderService : IReaderService
             userProgress.PagesRead = 0;
             userProgress.SeriesId = seriesId;
             userProgress.VolumeId = chapter.VolumeId;
-
-            await _eventHub.SendMessageAsync(MessageFactory.UserProgressUpdate,
-                MessageFactory.UserProgressUpdateEvent(user.Id, user.UserName, userProgress.SeriesId, userProgress.VolumeId, userProgress.ChapterId, 0));
         }
     }
 
@@ -331,8 +321,6 @@ public class ReaderService : IReaderService
                     currentChapter.Range, dto => dto.Range);
                 if (chapterId > 0) return chapterId;
             } else if (double.Parse(firstChapter.Number) > double.Parse(currentChapter.Number)) return firstChapter.Id;
-            // If we are the last chapter and next volume is there, we should try to use it (unless it's volume 0)
-            else if (double.Parse(firstChapter.Number) == 0) return firstChapter.Id;
         }
 
         // If we are the last volume and we didn't find any next volume, loop back to volume 0 and give the first chapter
@@ -497,7 +485,7 @@ public class ReaderService : IReaderService
             var chapters = volume.Chapters
                 .OrderBy(c => float.Parse(c.Number))
                 .Where(c => !c.IsSpecial && Parser.Parser.MaxNumberFromRange(c.Range) <= chapterNumber);
-            await MarkChaptersAsRead(user, volume.SeriesId, chapters);
+            MarkChaptersAsRead(user, volume.SeriesId, chapters);
         }
     }
 
@@ -506,7 +494,7 @@ public class ReaderService : IReaderService
         var volumes = await _unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(new List<int> { seriesId }, true);
         foreach (var volume in volumes.OrderBy(v => v.Number).Where(v => v.Number <= volumeNumber && v.Number > 0))
         {
-            await MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
+            MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
         }
     }
 
@@ -551,30 +539,5 @@ public class ReaderService : IReaderService
             MaxHours = maxHoursPages,
             AvgHours = (int) Math.Round((pageCount / AvgPagesPerMinute / 60F))
         };
-    }
-
-    /// <summary>
-    /// Formats a Chapter name based on the library it's in
-    /// </summary>
-    /// <param name="libraryType"></param>
-    /// <param name="includeHash">For comics only, includes a # which is used for numbering on cards</param>
-    /// <param name="includeSpace">Add a space at the end of the string. if includeHash and includeSpace are true, only hash will be at the end.</param>
-    /// <returns></returns>
-    public string FormatChapterName(LibraryType libraryType, bool includeHash = false, bool includeSpace = false)
-    {
-        switch(libraryType)
-        {
-            case LibraryType.Manga:
-                return "Chapter" + (includeSpace ? " " : string.Empty);
-            case LibraryType.Comic:
-                if (includeHash) {
-                    return "Issue #";
-                }
-                return "Issue" + (includeSpace ? " " : string.Empty);
-            case LibraryType.Book:
-                return "Book" + (includeSpace ? " " : string.Empty);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(libraryType), libraryType, null);
-        }
     }
 }
