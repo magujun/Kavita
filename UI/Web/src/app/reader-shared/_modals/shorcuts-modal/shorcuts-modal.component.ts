@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 
 export interface KeyboardShortcut {
@@ -13,18 +13,22 @@ export interface KeyboardShortcut {
 }
 
 @Component({
-  selector: 'app-shortcuts-modal',
-  templateUrl: './shortcuts-modal.component.html',
-  styleUrls: ['./shortcuts-modal.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  selector: 'app-shorcuts-modal',
+  templateUrl: './shorcuts-modal.component.html',
+  styleUrls: ['./shorcuts-modal.component.scss']
 })
-export class ShortcutsModalComponent {
+export class ShorcutsModalComponent implements OnInit {
 
   @Input() shortcuts: Array<KeyboardShortcut> = [];
 
   constructor(public modal: NgbActiveModal) { }
 
+  ngOnInit(): void {
+  }
+
+
   close() {
     this.modal.close();
   }
+
 }
