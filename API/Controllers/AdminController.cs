@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using API.Entities;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +18,6 @@ namespace API.Controllers
         /// Checks if an admin exists on the system. This is essentially a check to validate if the system has been setup.
         /// </summary>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpGet("exists")]
         public async Task<ActionResult<bool>> AdminExists()
         {

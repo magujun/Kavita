@@ -70,33 +70,14 @@ namespace API.Controllers
         /// </summary>
         /// <param name="resetPasswordDto"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<ActionResult> UpdatePassword(ResetPasswordDto resetPasswordDto)
         {
-            // TODO: Log this request to Audit Table
             _logger.LogInformation("{UserName} is changing {ResetUser}'s password", User.GetUsername(), resetPasswordDto.UserName);
+            var user = await _userManager.Users.SingleAsync(x => x.UserName == resetPasswordDto.UserName);
 
-            var user = await _userManager.Users.SingleOrDefaultAsync(x => x.UserName == resetPasswordDto.UserName);
-            if (user == null) return Ok(); // Don't report BadRequest as that would allow brute forcing to find accounts on system
-            var isAdmin = User.IsInRole(PolicyConstants.AdminRole);
-
-
-            if (resetPasswordDto.UserName == User.GetUsername() && !(User.IsInRole(PolicyConstants.ChangePasswordRole) || isAdmin))
+            if (resetPasswordDto.UserName != User.GetUsername() && !(User.IsInRole(PolicyConstants.AdminRole) || User.IsInRole(PolicyConstants.ChangePasswordRole)))
                 return Unauthorized("You are not permitted to this operation.");
-
-            if (resetPasswordDto.UserName != User.GetUsername() && !isAdmin)
-                return Unauthorized("You are not permitted to this operation.");
-
-            if (string.IsNullOrEmpty(resetPasswordDto.OldPassword) && !isAdmin)
-                return BadRequest(new ApiException(400, "You must enter your existing password to change your account unless you're an admin"));
-
-            // If you're an admin and the username isn't yours, you don't need to validate the password
-            var isResettingOtherUser = (resetPasswordDto.UserName != User.GetUsername() && isAdmin);
-            if (!isResettingOtherUser && !await _userManager.CheckPasswordAsync(user, resetPasswordDto.OldPassword))
-            {
-                return BadRequest("Invalid Password");
-            }
 
             var errors = await _accountService.ChangeUserPassword(user, resetPasswordDto.Password);
             if (errors.Any())
@@ -113,7 +94,6 @@ namespace API.Controllers
         /// </summary>
         /// <param name="registerDto"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<ActionResult<UserDto>> RegisterFirstUser(RegisterDto registerDto)
         {
@@ -163,10 +143,7 @@ namespace API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Something went wrong when registering user");
-                // We need to manually delete the User as we've already committed
-                var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(registerDto.Username);
-                _unitOfWork.UserRepository.Delete(user);
-                await _unitOfWork.CommitAsync();
+                await _unitOfWork.RollbackAsync();
             }
 
             return BadRequest("Something went wrong when registering user");
@@ -178,7 +155,6 @@ namespace API.Controllers
         /// </summary>
         /// <param name="loginDto"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
@@ -197,13 +173,13 @@ namespace API.Controllers
                     "You are missing an email on your account. Please wait while we migrate your account.");
             }
 
-            var result = await _signInManager
-                .CheckPasswordSignInAsync(user, loginDto.Password, true);
-
-            if (result.IsLockedOut)
+            if (!validPassword)
             {
-                return Unauthorized("You've been locked out from too many authorization attempts. Please wait 10 minutes.");
+                return Unauthorized("Your credentials are not correct");
             }
+
+            var result = await _signInManager
+                .CheckPasswordSignInAsync(user, loginDto.Password, false);
 
             if (!result.Succeeded)
             {
@@ -236,7 +212,6 @@ namespace API.Controllers
         /// </summary>
         /// <param name="tokenRequestDto"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost("refresh-token")]
         public async Task<ActionResult<TokenRequestDto>> RefreshToken([FromBody] TokenRequestDto tokenRequestDto)
         {
@@ -354,7 +329,7 @@ namespace API.Controllers
                     lib.AppUsers.Remove(user);
                 }
 
-                libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries, LibraryIncludes.AppUser)).ToList();
+                libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries)).ToList();
             }
 
             foreach (var lib in libraries)
@@ -373,24 +348,6 @@ namespace API.Controllers
             return BadRequest("There was an exception when updating the user");
         }
 
-        /// <summary>
-        /// Requests the Invite Url for the UserId. Will return error if user is already validated.
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <param name="withBaseUrl">Include the "https://ip:port/" in the generated link</param>
-        /// <returns></returns>
-        [Authorize(Policy = "RequireAdminRole")]
-        [HttpGet("invite-url")]
-        public async Task<ActionResult<string>> GetInviteUrl(int userId, bool withBaseUrl)
-        {
-            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
-            if (user.EmailConfirmed)
-                return BadRequest("User is already confirmed");
-            if (string.IsNullOrEmpty(user.ConfirmationToken))
-                return BadRequest("Manual setup is unable to be completed. Please cancel and recreate the invite.");
-
-            return GenerateEmailLink(user.ConfirmationToken, "confirm-email", user.Email, withBaseUrl);
-        }
 
 
         /// <summary>
@@ -458,11 +415,11 @@ namespace API.Controllers
                 {
                     _logger.LogInformation("{UserName} is being registered as admin. Granting access to all libraries",
                         user.UserName);
-                    libraries = (await _unitOfWork.LibraryRepository.GetLibrariesAsync(LibraryIncludes.AppUser)).ToList();
+                    libraries = (await _unitOfWork.LibraryRepository.GetLibrariesAsync()).ToList();
                 }
                 else
                 {
-                    libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries, LibraryIncludes.AppUser)).ToList();
+                    libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries)).ToList();
                 }
 
                 foreach (var lib in libraries)
@@ -471,9 +428,11 @@ namespace API.Controllers
                     lib.AppUsers.Add(user);
                 }
 
+                await _unitOfWork.CommitAsync();
+
+
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 if (string.IsNullOrEmpty(token)) return BadRequest("There was an issue sending email");
-
 
                 var emailLink = GenerateEmailLink(token, "confirm-email", dto.Email);
                 _logger.LogCritical("[Invite User]: Email Link for {UserName}: {Link}", user.UserName, emailLink);
@@ -481,21 +440,13 @@ namespace API.Controllers
                 var accessible = await _emailService.CheckIfAccessible(host);
                 if (accessible)
                 {
-                    try
+                    await _emailService.SendConfirmationEmail(new ConfirmationEmailDto()
                     {
-                        await _emailService.SendConfirmationEmail(new ConfirmationEmailDto()
-                        {
-                            EmailAddress = dto.Email,
-                            InvitingUser = adminUser.UserName,
-                            ServerConfirmationLink = emailLink
-                        });
-                    } catch(Exception) {/* Swallow exception */}
+                        EmailAddress = dto.Email,
+                        InvitingUser = adminUser.UserName,
+                        ServerConfirmationLink = emailLink
+                    });
                 }
-
-                user.ConfirmationToken = token;
-
-                await _unitOfWork.CommitAsync();
-
                 return Ok(new InviteUserResponse
                 {
                     EmailLink = emailLink,
@@ -511,7 +462,6 @@ namespace API.Controllers
             return BadRequest("There was an error setting up your account. Please check the logs");
         }
 
-        [AllowAnonymous]
         [HttpPost("confirm-email")]
         public async Task<ActionResult<UserDto>> ConfirmEmail(ConfirmEmailDto dto)
         {
@@ -536,7 +486,6 @@ namespace API.Controllers
             if (!await ConfirmEmailToken(dto.Token, user)) return BadRequest("Invalid Email Token");
 
             user.UserName = dto.Username;
-            user.ConfirmationToken = null;
             var errors = await _accountService.ChangeUserPassword(user, dto.Password);
             if (errors.Any())
             {
@@ -668,11 +617,12 @@ namespace API.Controllers
             return Ok(emailLink);
         }
 
-        private string GenerateEmailLink(string token, string routePart, string email, bool withHost = true)
+        private string GenerateEmailLink(string token, string routePart, string email)
         {
             var host = _environment.IsDevelopment() ? "localhost:4200" : Request.Host.ToString();
-            if (withHost) return $"{Request.Scheme}://{host}{Request.PathBase}/registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
-            return $"registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
+            var emailLink =
+                $"{Request.Scheme}://{host}{Request.PathBase}/registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
+            return emailLink;
         }
 
         /// <summary>
@@ -730,18 +680,21 @@ namespace API.Controllers
         private async Task<bool> ConfirmEmailToken(string token, AppUser user)
         {
             var result = await _userManager.ConfirmEmailAsync(user, token);
-            if (result.Succeeded) return true;
-
-            _logger.LogCritical("[Account] Email validation failed");
-            if (!result.Errors.Any()) return false;
-
-            foreach (var error in result.Errors)
+            if (!result.Succeeded)
             {
-                _logger.LogCritical("[Account] Email validation error: {Message}", error.Description);
+                _logger.LogCritical("Email validation failed");
+                if (result.Errors.Any())
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        _logger.LogCritical("Email validation error: {Message}", error.Description);
+                    }
+                }
+
+                return false;
             }
 
-            return false;
-
+            return true;
         }
     }
 }

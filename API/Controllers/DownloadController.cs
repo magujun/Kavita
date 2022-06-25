@@ -83,7 +83,7 @@ namespace API.Controllers
 
 
         /// <summary>
-        /// Downloads all chapters within a volume. If the chapters are multiple zips, they will all be zipped up.
+        /// Downloads all chapters within a volume.
         /// </summary>
         /// <param name="volumeId"></param>
         /// <returns></returns>
@@ -112,17 +112,12 @@ namespace API.Controllers
             return await _downloadService.HasDownloadPermission(user);
         }
 
-        private ActionResult GetFirstFileDownload(IEnumerable<MangaFile> files)
+        private async Task<ActionResult> GetFirstFileDownload(IEnumerable<MangaFile> files)
         {
-            var (zipFile, contentType, fileDownloadName) = _downloadService.GetFirstFileDownload(files);
-            return PhysicalFile(zipFile, contentType, fileDownloadName, true);
+            var (bytes, contentType, fileDownloadName) = await _downloadService.GetFirstFileDownload(files);
+            return File(bytes, contentType, fileDownloadName);
         }
 
-        /// <summary>
-        /// Returns the zip for a single chapter. If the chapter contains multiple files, they will be zipped.
-        /// </summary>
-        /// <param name="chapterId"></param>
-        /// <returns></returns>
         [HttpGet("chapter")]
         public async Task<ActionResult> DownloadChapter(int chapterId)
         {
@@ -153,14 +148,15 @@ namespace API.Controllers
                     await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
                         MessageFactory.DownloadProgressEvent(User.GetUsername(),
                             Path.GetFileNameWithoutExtension(downloadName), 1F, "ended"));
-                    return GetFirstFileDownload(files);
+                    return await GetFirstFileDownload(files);
                 }
 
-                var filePath = _archiveService.CreateZipForDownload(files.Select(c => c.FilePath), tempFolder);
+                var (fileBytes, _) = await _archiveService.CreateZipForDownload(files.Select(c => c.FilePath),
+                    tempFolder);
                 await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
                     MessageFactory.DownloadProgressEvent(User.GetUsername(),
                         Path.GetFileNameWithoutExtension(downloadName), 1F, "ended"));
-                return PhysicalFile(filePath, DefaultContentType, downloadName, true);
+                return File(fileBytes, DefaultContentType, downloadName);
             }
             catch (Exception ex)
             {
@@ -188,16 +184,10 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Downloads all bookmarks in a zip for
-        /// </summary>
-        /// <param name="downloadBookmarkDto"></param>
-        /// <returns></returns>
         [HttpPost("bookmarks")]
         public async Task<ActionResult> DownloadBookmarkPages(DownloadBookmarkDto downloadBookmarkDto)
         {
             if (!await HasDownloadPermission()) return BadRequest("You do not have permission");
-            if (!downloadBookmarkDto.Bookmarks.Any()) return BadRequest("Bookmarks cannot be empty");
 
             // We know that all bookmarks will be for one single seriesId
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername());
@@ -208,14 +198,13 @@ namespace API.Controllers
             var filename = $"{series.Name} - Bookmarks.zip";
             await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
                 MessageFactory.DownloadProgressEvent(User.GetUsername(), Path.GetFileNameWithoutExtension(filename), 0F));
-            var seriesIds = string.Join("_", downloadBookmarkDto.Bookmarks.Select(b => b.SeriesId).Distinct());
-            var filePath =  _archiveService.CreateZipForDownload(files,
-                $"download_{user.Id}_{seriesIds}_bookmarks");
+            var (fileBytes, _) = await _archiveService.CreateZipForDownload(files,
+                $"download_{user.Id}_{series.Id}_bookmarks");
             await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
                 MessageFactory.DownloadProgressEvent(User.GetUsername(), Path.GetFileNameWithoutExtension(filename), 1F));
 
 
-            return PhysicalFile(filePath, DefaultContentType, filename, true);
+            return File(fileBytes, DefaultContentType, filename);
         }
 
     }

@@ -15,7 +15,7 @@ namespace API.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "6.0.5");
+            modelBuilder.HasAnnotation("ProductVersion", "6.0.6");
 
             modelBuilder.Entity("API.Entities.AppRole", b =>
                 {
@@ -169,6 +169,9 @@ namespace API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValue("#000000");
+
+                    b.Property<bool>("BlurUnreadSummaries")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("BookReaderFontFamily")
                         .HasColumnType("TEXT");
