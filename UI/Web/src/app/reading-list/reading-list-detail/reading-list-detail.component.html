@@ -50,7 +50,7 @@
       Nothing added
     </div>
 
-
+    <!-- TODO: This needs virtualization -->
     <app-draggable-ordered-list [items]="items" (orderUpdated)="orderUpdated($event)" (itemRemove)="itemRemoved($event)" [accessibilityMode]="accessibilityMode">
         <ng-template #draggableItem let-item let-position="idx">
           <div class="d-flex" style="width: 100%;">
