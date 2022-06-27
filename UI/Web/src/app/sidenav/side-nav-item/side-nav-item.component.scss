@@ -21,7 +21,6 @@
         }
     }
 
-
     span {
         &:last-child {
             flex-grow: 1;
@@ -98,6 +97,10 @@
     }
 }
 
+.side-nav-icon {
+    padding: 0;
+    justify-content: center !important;
+}
 
 a {
     text-decoration: none;

@@ -1,0 +1,34 @@
+input:not([type="range"]),
+.form-control {
+    background-color: transparent;
+    color: var(--input-text-color);
+    border-color: var(--input-border-color);
+
+    &:focus {
+        border-color: transparent;
+        background-color: transparent;
+        color: var(--input-focused-text-color);
+        box-shadow: 0 0 0 0.25rem var(--input-focus-boxshadow-color);
+    }
+
+    &:read-only {
+        background-color: var(--input-bg-readonly-color);
+        cursor: initial;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
+}
+
+.form-range::-webkit-slider-thumb:active {
+    background-color: var(--input-range-active-color);
+}
+
+.form-range::-webkit-slider-thumb {
+    background-color: var(--input-range-color);
+}
