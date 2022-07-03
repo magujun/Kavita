@@ -1,4 +1,5 @@
 #This Dockerfile creates a build for all architectures
+# syntax=docker/dockerfile:1
 
 #Image that copies in the files and passes them to the main image
 FROM debian:stable-slim AS copytask
