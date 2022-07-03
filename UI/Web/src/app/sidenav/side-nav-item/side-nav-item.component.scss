@@ -3,12 +3,12 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
-    padding: 0 10px;
+    padding: 0 0 0 1rem;
     width: 100%;
     height: auto;
     min-height: 40px;
     overflow: hidden;
-    cursor: pointer;
+    cursor: default;
 
     .side-nav-text {
         padding-left: 10px;
@@ -25,6 +25,7 @@
         &:last-child {
             flex-grow: 1;
             justify-content: end;
+            text-align: right;
         }
 
         div {

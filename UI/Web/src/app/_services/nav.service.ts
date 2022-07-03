@@ -40,9 +40,9 @@ export class NavService {
    * Shows the top nav bar. This should be visible on all pages except the reader.
    */
   showNavBar() {
-    this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '56px');
-    this.renderer.setStyle(this.document.querySelector('body'), 'height', 'calc(var(--vh)*100 - 56px)');
-    this.renderer.setStyle(this.document.querySelector('html'), 'height', 'calc(var(--vh)*100 - 56px)');
+    this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '4rem');
+    this.renderer.setStyle(this.document.querySelector('body'), 'height', 'calc(var(--vh)*100 - 4rem)');
+    this.renderer.setStyle(this.document.querySelector('html'), 'height', 'calc(var(--vh)*100)');
     this.navbarVisibleSource.next(true);
   }
 
