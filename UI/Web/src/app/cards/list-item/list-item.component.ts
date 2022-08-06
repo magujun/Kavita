@@ -44,9 +44,9 @@ export class ListItemComponent implements OnInit {
    */
   @Input() imageHeight: string = '230px';
   /**
-   * Size of the Image Width Defaults to 158px.
+   * Size of the Image Width Defaults to 165px.
    */
-  @Input() imageWidth: string = '158px';
+  @Input() imageWidth: string = '165px';
   @Input() seriesLink: string = '';
 
   @Input() pagesRead: number = 0;

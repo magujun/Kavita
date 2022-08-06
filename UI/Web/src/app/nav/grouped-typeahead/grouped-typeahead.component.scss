@@ -12,10 +12,10 @@ img {
 }
 
 .btn-close {
-    margin-top: 0.4rem;
-    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    font-size: 0.5rem;
     position: absolute;
-    right: 5px;
+    right: 0.1rem;
 }
 
 
@@ -116,7 +116,7 @@ img {
 }
 
 .list-group {
-    max-width: 42vw;
+    max-width: 38vw;
     z-index:1000;
     overflow-y: auto;
     overflow-x: hidden;
@@ -124,6 +124,7 @@ img {
     flex: auto;
     max-height: calc(100vh - 5rem);
     height: fit-content;
+    background: var(--dropdown-bg-color);
 }
 
 .list-group.results {
