@@ -150,9 +150,9 @@
     <_ContentIncludedByDefault Remove="wwwroot\7.860cdd6fd9d758e6c210.js.map" />
     <_ContentIncludedByDefault Remove="wwwroot\8.028f6737a2f0621d40c7.js" />
     <_ContentIncludedByDefault Remove="wwwroot\8.028f6737a2f0621d40c7.js.map" />
-    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGarmond\EBGaramond-Italic-VariableFont_wght.ttf" />
-    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGarmond\EBGaramond-VariableFont_wght.ttf" />
-    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGarmond\OFL.txt" />
+    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGaramond\EBGaramond-Italic-VariableFont_wght.ttf" />
+    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGaramond\EBGaramond-VariableFont_wght.ttf" />
+    <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\EBGaramond\OFL.txt" />
     <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\Fira_Sans\FiraSans-Black.ttf" />
     <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\Fira_Sans\FiraSans-BlackItalic.ttf" />
     <_ContentIncludedByDefault Remove="wwwroot\assets\fonts\Fira_Sans\FiraSans-Bold.ttf" />
