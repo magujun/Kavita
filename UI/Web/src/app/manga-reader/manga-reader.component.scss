@@ -98,11 +98,8 @@ img {
 }
 
 .bottom-menu {
-    padding: 20px 20px;
+    padding: 0.75rem 0.75rem;
 }
-
-
-
 
 .overlay {
   background-color: var(--manga-reader-overlay-bg-color);
@@ -244,6 +241,7 @@ img {
     .custom-slider .ngx-slider .ngx-slider-bubble {
       bottom: 14px;
       font-weight: bold;
+      font-size: 0.75rem;
     }
   
     .custom-slider .ngx-slider .ngx-slider-limit {

@@ -110,5 +110,5 @@ cd "$dir"
 
 #Builds Docker images
 #docker buildx build -t magujun/kavita:nightly --platform linux/amd64,linux/arm/v7,linux/arm64 . --push
-echo "Application build finished. Now run 'docker buildx build -t magujun/kavita:<platform> --platform linux/[amd64 | arm | arm64] . --push' to build the docker container"
+echo "Application build finished. Now run 'docker buildx build -t magujun/kavita:<platform> --platform linux/[amd64 | arm7 | arm64] . --push' to build the docker container"
 

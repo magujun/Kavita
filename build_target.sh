@@ -16,9 +16,9 @@ if [ "$TARGETPLATFORM" == "linux/amd64" ]
 then
 	./build.sh linux-x64
 	mv /Projects/Kavita/_output/linux-x64 /Projects/Kavita/_output/build
-elif [ "$TARGETPLATFORM" == "linux/arm/v7" ]
+elif [ "$TARGETPLATFORM" == "linux/arm" ]
 then
-	./build.sh linux-arm
+	./build.sh linux-arm7
 	mv /Projects/Kavita/_output/linux-arm /Projects/Kavita/_output/build
 elif [ "$TARGETPLATFORM" == "linux/arm64" ]
 then
