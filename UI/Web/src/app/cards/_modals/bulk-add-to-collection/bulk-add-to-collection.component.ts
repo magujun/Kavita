@@ -1,5 +1,5 @@
 import { Component, ElementRef, Input, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
-import { FormGroup, FormControl } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormControl } from '@angular/forms';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
 import { CollectionTag } from 'src/app/_models/collection-tag';
@@ -25,7 +25,7 @@ export class BulkAddToCollectionComponent implements OnInit {
    */
   lists: Array<CollectionTag> = [];
   loading: boolean = false;
-  listForm: FormGroup = new FormGroup({});
+  listForm: UntypedFormGroup = new UntypedFormGroup({});
 
   @ViewChild('title') inputElem!: ElementRef<HTMLInputElement>;
 
@@ -34,8 +34,8 @@ export class BulkAddToCollectionComponent implements OnInit {
 
   ngOnInit(): void {
 
-    this.listForm.addControl('title', new FormControl(this.title, []));
-    this.listForm.addControl('filterQuery', new FormControl('', []));
+    this.listForm.addControl('title', new UntypedFormControl(this.title, []));
+    this.listForm.addControl('filterQuery', new UntypedFormControl('', []));
     
     this.loading = true;
     this.collectionService.allTags().subscribe(tags => {

@@ -1,6 +1,8 @@
 {
   "dependencies": {
-    "@angular/core": "^13.3.6",
+    "@angular-slider/ngx-slider": "^2.0.4",
+    "@angular/core": "^14.1.1",
+    "@iharbeck/ngx-virtual-scroller": "^14.0.4",
     "nvm": "^0.0.4"
   }
 }

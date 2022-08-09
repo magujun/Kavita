@@ -1,5 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Series } from 'src/app/_models/series';
 import { SeriesService } from 'src/app/_services/series.service';
@@ -12,14 +12,14 @@ import { SeriesService } from 'src/app/_services/series.service';
 export class ReviewSeriesModalComponent implements OnInit {
 
   @Input() series!: Series;
-  reviewGroup!: FormGroup;
+  reviewGroup!: UntypedFormGroup;
 
   constructor(public modal: NgbActiveModal, private seriesService: SeriesService) {}
 
   ngOnInit(): void {
-    this.reviewGroup = new FormGroup({
-      review: new FormControl(this.series.userReview, []),
-      rating: new FormControl(this.series.userRating, [])
+    this.reviewGroup = new UntypedFormGroup({
+      review: new UntypedFormControl(this.series.userReview, []),
+      rating: new UntypedFormControl(this.series.userRating, [])
     });
   }
 
