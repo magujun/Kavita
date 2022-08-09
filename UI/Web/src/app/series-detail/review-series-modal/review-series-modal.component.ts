@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Series } from 'src/app/_models/series';
@@ -7,22 +7,20 @@ import { SeriesService } from 'src/app/_services/series.service';
 @Component({
   selector: 'app-review-series-modal',
   templateUrl: './review-series-modal.component.html',
-  styleUrls: ['./review-series-modal.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./review-series-modal.component.scss']
 })
 export class ReviewSeriesModalComponent implements OnInit {
 
   @Input() series!: Series;
   reviewGroup!: UntypedFormGroup;
 
-  constructor(public modal: NgbActiveModal, private seriesService: SeriesService, private readonly cdRef: ChangeDetectorRef) {}
+  constructor(public modal: NgbActiveModal, private seriesService: SeriesService) {}
 
   ngOnInit(): void {
     this.reviewGroup = new UntypedFormGroup({
       review: new UntypedFormControl(this.series.userReview, []),
       rating: new UntypedFormControl(this.series.userRating, [])
     });
-    this.cdRef.markForCheck();
   }
 
   close() {
@@ -31,7 +29,6 @@ export class ReviewSeriesModalComponent implements OnInit {
 
   clearRating() {
     this.reviewGroup.get('rating')?.setValue(0);
-    this.cdRef.markForCheck();
   }
 
   save() {
@@ -40,4 +37,5 @@ export class ReviewSeriesModalComponent implements OnInit {
       this.modal.close({success: true, review: model.review, rating: model.rating});
     });
   }
+
 }

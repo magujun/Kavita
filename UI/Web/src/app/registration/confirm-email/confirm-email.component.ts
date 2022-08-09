@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
@@ -9,10 +9,9 @@ import { NavService } from 'src/app/_services/nav.service';
 @Component({
   selector: 'app-confirm-email',
   templateUrl: './confirm-email.component.html',
-  styleUrls: ['./confirm-email.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./confirm-email.component.scss']
 })
-export class ConfirmEmailComponent {
+export class ConfirmEmailComponent implements OnInit {
   /**
    * Email token used for validating
    */
@@ -31,13 +30,11 @@ export class ConfirmEmailComponent {
 
 
   constructor(private route: ActivatedRoute, private router: Router, private accountService: AccountService, 
-    private toastr: ToastrService, private themeService: ThemeService, private navService: NavService, 
-    private readonly cdRef: ChangeDetectorRef) {
+    private toastr: ToastrService, private themeService: ThemeService, private navService: NavService) {
       this.navService.hideSideNav();
       this.themeService.setTheme(this.themeService.defaultTheme);
       const token = this.route.snapshot.queryParamMap.get('token');
       const email = this.route.snapshot.queryParamMap.get('email');
-      this.cdRef.markForCheck();
       if (token == undefined || token === '' || token === null) {
         // This is not a valid url, redirect to login
         this.toastr.error('Invalid confirmation email');
@@ -46,7 +43,9 @@ export class ConfirmEmailComponent {
       }
       this.token = token;
       this.registerForm.get('email')?.setValue(email || '');
-      this.cdRef.markForCheck();
+  }
+
+  ngOnInit(): void {
   }
 
   submit() {
@@ -56,9 +55,8 @@ export class ConfirmEmailComponent {
       this.toastr.success('Account registration complete');
       this.router.navigateByUrl('login');
     }, err => {
-      console.error('Error from Confirming Email: ', err);
+      console.log('error: ', err);
       this.errors = err;
-      this.cdRef.markForCheck();
     });
   }
 
