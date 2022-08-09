@@ -103,7 +103,7 @@ $image-width: 165px;
     position: absolute;
     top: 5px;
     left: 5px;
-    border-radius: 15px;
+    border-radius: 0.25em;
     padding: 0 10px;
     background-color: var(--card-bg-color);
 }
@@ -137,6 +137,7 @@ $image-width: 165px;
         top: 5px;
         right: 10px;
         position: absolute;
+        font-size: 1rem;
     }
 }
 

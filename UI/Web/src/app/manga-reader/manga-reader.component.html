@@ -109,11 +109,11 @@
                         <ngx-slider [options]="pageOptions" [value]="pageNum" aria-describedby="slider-info" (userChangeEnd)="startMenuCloseTimer()" (userChangeStart)="cancelMenuCloseTimer();"></ngx-slider>
                     </div>
                 </ng-template>
-                <button class="btn btn-small btn-icon col-2" [disabled]="nextPageDisabled || pageNum >= maxPages - 1" (click)="goToPage(this.maxPages);resetMenuCloseTimer();" title="Last Page"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
+                <button class="btn btn-small btn-icon col-1" [disabled]="nextPageDisabled || pageNum >= maxPages - 1" (click)="goToPage(this.maxPages);resetMenuCloseTimer();" title="Last Page"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
                 <button class="btn btn-small btn-icon col-1" [disabled]="nextChapterDisabled" (click)="loadNextChapter();resetMenuCloseTimer();" title="Next Chapter/Volume"><i class="fa fa-fast-forward" aria-hidden="true"></i></button>
             </div>
         </div>
-        <div class="row pt-4 ms-2 me-2">
+        <div class="row pb-1 ms-2 me-2 align-items-center text-center">
             <div class="col">
                 <button class="btn btn-icon" (click)="setReadingDirection();resetMenuCloseTimer();" [disabled]="readerMode === ReaderMode.Webtoon || readerMode === ReaderMode.UpDown" aria-describedby="reading-direction" title="Reading Direction: {{readingDirection === ReadingDirection.LeftToRight ? 'Left to Right' : 'Right to Left'}}">
                     <i class="fa fa-angle-double-{{readingDirection === ReadingDirection.LeftToRight ? 'right' : 'left'}}" aria-hidden="true"></i>
@@ -138,11 +138,17 @@
                     <span class="visually-hidden">Settings</span>
                 </button>
             </div>
+            <div class="col">
+                <div class="form-check form-switch text-start">
+                    <input type="checkbox" id="auto-close" formControlName="autoCloseMenu" class="form-check-input" [value]="true" aria-labelledby="auto-close-label">
+                    <label class="form-check-label text-nowrap" for="auto-close">Auto Close Menu</label>
+                </div>
+            </div>
         </div>
         <div class="bottom-menu" *ngIf="settingsOpen && generalSettingsForm">
             <form [formGroup]="generalSettingsForm">
-                <div class="row mb-2">
-                    <div class="col-md-6 col-sm-12">
+                <div class="row mb-1">
+                    <div class="col-md-4 col-sm-4">
                         <label for="page-splitting" class="form-label">Image Splitting</label>&nbsp;
                         <div class="split fa fa-image">
                             <div class="{{SplitIconClass}}"></div>
@@ -152,7 +158,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-6 col-sm-12">
+                    <div class="col-md-4 col-sm-4">
                         <label for="page-fitting" class="form-label">Image Scaling</label>&nbsp;<i class="fa {{getFittingIcon()}}" aria-hidden="true"></i>
                         <select class="form-control" id="page-fitting" formControlName="fittingOption">
                             <option value="full-height">Height</option>
@@ -160,25 +166,11 @@
                             <option value="original">Original</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="row mb-2">
-                    <div class="col-md-6 col-sm-12" *ngIf="true">
+                    <div class="col-md-4 col-sm-4" *ngIf="true">
                         <label for="layout-mode" class="form-label">Layout Mode</label>
                         <select class="form-control" id="page-fitting" formControlName="layoutMode">
                             <option [value]="opt.value" *ngFor="let opt of layoutModes">{{opt.text}}</option>
                         </select>
-                    </div>
-                    <div class="col-md-6 col-sm-12">
-                        <div class="mb-3">
-                            <label id="auto-close-label" class="form-label"></label>
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="auto-close" formControlName="autoCloseMenu" class="form-check-input" [value]="true" aria-labelledby="auto-close-label">
-                                    <label class="form-check-label" for="auto-close">Auto Close Menu</label>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </form>

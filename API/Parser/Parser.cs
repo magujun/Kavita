@@ -13,10 +13,10 @@ namespace API.Parser
         public const string DefaultVolume = "0";
         private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(500);
 
-        public const string ImageFileExtensions = @"^(\.png|\.jpeg|\.jpg|\.webp|\.gif)";
+        public const string ImageFileExtensions = @"\.png|\.jpeg|\.jpg|\.webp|\.gif";
         public const string ArchiveFileExtensions = @"\.cbz|\.zip|\.rar|\.cbr|\.tar.gz|\.7zip|\.7z|\.cb7|\.cbt";
         public const string BookFileExtensions = @"\.epub|\.pdf";
-        public const string MacOsMetadataFileStartsWith = @"._";
+        public const string MacOsMetadataFileStartsWith = @"^\._";
 
         public const string SupportedExtensions =
             ArchiveFileExtensions + "|" + ImageFileExtensions + "|" + BookFileExtensions;
@@ -28,43 +28,43 @@ namespace API.Parser
         /// Matches against font-family css syntax. Does not match if url import has data: starting, as that is binary data
         /// </summary>
         /// <remarks>See here for some examples https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face</remarks>
-        public static readonly Regex FontSrcUrlRegex = new Regex(@"(?<Start>(?:src:\s?)?(?:url|local)\((?!data:)" + "(?:[\"']?)" + @"(?!data:))"
+        public static readonly Regex FontSrcUrlRegex = new(@"(?<Start>(?:src:\s?)?(?:url|local)\((?!data:)" + "(?:[\"']?)" + @"(?!data:))"
                                                                  + "(?<Filename>(?!data:)[^\"']+?)" + "(?<End>[\"']?" + @"\);?)",
             MatchOptions, RegexTimeout);
         /// <summary>
         /// https://developer.mozilla.org/en-US/docs/Web/CSS/@import
         /// </summary>
-        public static readonly Regex CssImportUrlRegex = new Regex("(@import\\s([\"|']|url\\([\"|']))(?<Filename>[^'\"]+)([\"|']\\)?);",
+        public static readonly Regex CssImportUrlRegex = new("(@import\\s([\"|']|url\\([\"|']))(?<Filename>[^'\"]+)([\"|']\\)?);",
             MatchOptions | RegexOptions.Multiline, RegexTimeout);
         /// <summary>
         /// Misc css image references, like background-image: url(), border-image, or list-style-image
         /// </summary>
         /// Original prepend: (background|border|list-style)-image:\s?)?
-        public static readonly Regex CssImageUrlRegex = new Regex(@"(url\((?!data:).(?!data:))" + "(?<Filename>(?!data:)[^\"']*)" + @"(.\))",
+        public static readonly Regex CssImageUrlRegex = new(@"(url\((?!data:).(?!data:))" + "(?<Filename>(?!data:)[^\"']*)" + @"(.\))",
             MatchOptions, RegexTimeout);
 
 
         private const string XmlRegexExtensions = @"\.xml";
-        private static readonly Regex ImageRegex = new Regex(ImageFileExtensions,
+        private static readonly Regex ImageRegex = new(ImageFileExtensions,
             MatchOptions, RegexTimeout);
-        private static readonly Regex ArchiveFileRegex = new Regex(ArchiveFileExtensions,
+        private static readonly Regex ArchiveFileRegex = new(ArchiveFileExtensions,
             MatchOptions, RegexTimeout);
-        private static readonly Regex ComicInfoArchiveRegex = new Regex(@"\.cbz|\.cbr|\.cb7|\.cbt",
+        private static readonly Regex ComicInfoArchiveRegex = new(@"\.cbz|\.cbr|\.cb7|\.cbt",
             MatchOptions, RegexTimeout);
-        private static readonly Regex XmlRegex = new Regex(XmlRegexExtensions,
+        private static readonly Regex XmlRegex = new(XmlRegexExtensions,
             MatchOptions, RegexTimeout);
-        private static readonly Regex BookFileRegex = new Regex(BookFileExtensions,
+        private static readonly Regex BookFileRegex = new(BookFileExtensions,
             MatchOptions, RegexTimeout);
-        private static readonly Regex CoverImageRegex = new Regex(@"(?<![[a-z]\d])(?:!?)(?<!back)(?<!back_)(?<!back-)(cover|folder)(?![\w\d])",
+        private static readonly Regex CoverImageRegex = new(@"(?<![[a-z]\d])(?:!?)(?<!back)(?<!back_)(?<!back-)(cover|folder)(?![\w\d])",
             MatchOptions, RegexTimeout);
 
-        private static readonly Regex NormalizeRegex = new Regex(@"[^\p{L}0-9\+]",
+        private static readonly Regex NormalizeRegex = new(@"[^\p{L}0-9\+]",
             MatchOptions, RegexTimeout);
 
         /// <summary>
         /// Recognizes the Special token only
         /// </summary>
-        private static readonly Regex SpecialTokenRegex = new Regex(@"SP\d+",
+        private static readonly Regex SpecialTokenRegex = new(@"SP\d+",
             MatchOptions, RegexTimeout);
 
 

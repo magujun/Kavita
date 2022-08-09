@@ -55,6 +55,31 @@
   src: url("assets/fonts/Spartan/Spartan-VariableFont_wght.ttf");
 }
 
+@font-face {
+  font-family: "FiraSans";
+  src: url("assets/fonts/Fira_Sans/FiraSans-Regular.ttf");
+}
+
+@font-face {
+  font-family: "FiraSans-Medium";
+  src: url("assets/fonts/Fira_Sans/FiraSans-Medium.ttf");
+}
+
+@font-face {
+  font-family: "Lato";
+  src: url("assets/fonts/Lato/Lato-Regular.ttf");
+}
+
+@font-face {
+  font-family: "Oswald";
+  src: url("assets/fonts/Oswald/Oswald-VariableFont_wght.ttf");
+}
+
+@font-face {
+  font-family: "RocknRollOne";
+  src: url("assets/fonts/RocknRoll_One/RocknRollOne-Regular.ttf");
+}
+
 label, select, .clickable {
   cursor: pointer;
 }
@@ -65,19 +90,20 @@ label, select, .clickable {
 
 // Needed for fullscreen
 app-root {
-  background-color: transparent;
-  scrollbar-width: 14px;
+  background-color: rgba(0,0,0,0.1);
+  scrollbar-width: 0.5rem;
   scrollbar-color: var(--primary-color-scrollbar);
 }
 
 ::-webkit-scrollbar {
-  width: 14px;
+  display: none;
+  width: 0.5rem;
 }
 
 ::-webkit-scrollbar-thumb {
   background-clip: padding-box;
   background-color: var(--primary-color-scrollbar);
   border: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: 0.25em;
   min-height: 50px;
 }

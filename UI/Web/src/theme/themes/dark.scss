@@ -102,7 +102,7 @@
     --side-nav-border: none;
     --side-nav-border-closed: none;
     --side-nav-border-transition: 0.5s ease-in-out;
-    --side-nav-companion-bar-transistion: 0.15s linear;
+    --side-nav-companion-bar-transition: 0.15s linear;
     --side-nav-bg-color-transition: 0.5s ease-in-out;
     --side-nav-closed-bg-color: transparent;
     --side-nav-item-active-color: var(--primary-color);
@@ -179,8 +179,8 @@
     --grid-breakpoints-md: $grid-breakpoint-md;
     --grid-breakpoints-lg: $grid-breakpoint-lg;
     --grid-breakpoints-xl: $grid-breakpoint-xl;
-    --body-font-family: "EBGaramond", "Helvetica Neue", sans-serif;
-    --brand-font-family: "Spartan", sans-serif;
+    --body-font-family: "FiraSans", "EBGaramond", "Helvetica Neue", sans-serif;
+    --brand-font-family: "FiraSans", "Spartan", sans-serif;
 
     /* Card */
     --card-bg-color: rgba(22,27,34,0.5);

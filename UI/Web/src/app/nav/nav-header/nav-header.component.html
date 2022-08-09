@@ -149,7 +149,7 @@
           
 
           <div ngbDropdown class="nav-item dropdown" display="dynamic" placement="bottom-right" *ngIf="(accountService.currentUser$ | async) as user" dropdown>
-            <button class="btn btn-outline-secondary primary-text" ngbDropdownToggle>
+            <button class="btn primary-text" ngbDropdownToggle>
               <i class="fa-solid fa-user-circle align-self-center phone-hidden d-xs-inline-block d-sm-inline-block d-md-none"></i><span class="d-none d-xs-none d-sm-none d-md-inline-block">{{user.username}}</span>
             </button>
             <div ngbDropdownMenu>
