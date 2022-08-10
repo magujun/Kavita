@@ -1,9 +1,11 @@
+import { trigger, state, style, transition, animate } from '@angular/animations';
 import { DOCUMENT } from '@angular/common';
-import { Component, ContentChild, ElementRef, EventEmitter, HostListener, Inject, Input, OnDestroy, OnInit, Output, Renderer2, RendererStyleFlags2, TemplateRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, HostListener, Inject, Input, OnDestroy, OnInit, Output, Renderer2, RendererStyleFlags2, TemplateRef, ViewChild } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { Observable, of, ReplaySubject, Subject } from 'rxjs';
 import { auditTime, distinctUntilChanged, filter, map, shareReplay, switchMap, take, takeUntil, tap } from 'rxjs/operators';
 import { KEY_CODES } from '../shared/_services/utility.service';
+import { ToggleService } from '../_services/toggle.service';
 import { SelectionCompareFn, TypeaheadSettings } from './typeahead-settings';
 
 /**
@@ -130,10 +132,25 @@ export class SelectionModel<T> {
   }
 }
 
+const ANIMATION_SPEED = 200;
+
 @Component({
   selector: 'app-typeahead',
   templateUrl: './typeahead.component.html',
-  styleUrls: ['./typeahead.component.scss']
+  styleUrls: ['./typeahead.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    trigger('slideFromTop', [
+      state('in', style({ height: '0px', overflow: 'hidden'})),
+      transition('void => *', [
+        style({ height: '100%', overflow: 'auto' }),
+        animate(ANIMATION_SPEED)
+      ]),
+      transition('* => void', [
+        animate(ANIMATION_SPEED, style({ height: '0px', overflow: 'hidden' })),
+      ])
+    ])
+  ]
 })
 export class TypeaheadComponent implements OnInit, OnDestroy {
   /**
@@ -174,7 +191,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
 
   private readonly onDestroy = new Subject<void>();
 
-  constructor(private renderer2: Renderer2, @Inject(DOCUMENT) private document: Document) { }
+  constructor(private renderer2: Renderer2, @Inject(DOCUMENT) private document: Document, private readonly cdRef: ChangeDetectorRef) { }
 
   ngOnDestroy(): void {
     this.onDestroy.next();
@@ -182,7 +199,6 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-
     this.reset.pipe(takeUntil(this.onDestroy)).subscribe((resetToEmpty: boolean) => {
       this.clearSelections(resetToEmpty);
       this.init();
@@ -195,6 +211,10 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
     if (this.settings.compareFn === undefined && this.settings.multiple) {
       console.error('A compare function must be defined');
       return;
+    }
+
+    if (this.settings.trackByIdentityFn === undefined) {
+      this.settings.trackByIdentityFn = (index, value) => value;
     }
 
     if (this.settings.hasOwnProperty('formControl') && this.settings.formControl) {
@@ -231,15 +251,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
 
         switchMap(val => {
           this.isLoadingOptions = true;
-          let results: Observable<any[]>;
-          if (Array.isArray(this.settings.fetchFn)) {
-            const filteredArray = this.settings.compareFn(this.settings.fetchFn, val.trim());
-            results = of(filteredArray).pipe(takeUntil(this.onDestroy), map((items: any[]) => items.filter(item => this.filterSelected(item))));
-          } else {
-            results = this.settings.fetchFn(val.trim()).pipe(takeUntil(this.onDestroy), map((items: any[]) => items.filter(item => this.filterSelected(item))));
-          }
-
-          return results;
+          return this.settings.fetchFn(val.trim()).pipe(takeUntil(this.onDestroy), map((items: any[]) => items.filter(item => this.filterSelected(item))));
         }),
         tap((filteredOptions) => {
           this.isLoadingOptions = false;
@@ -274,8 +286,12 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
   }
 
 
-  @HostListener('window:click', ['$event'])
+  @HostListener('body:click', ['$event'])
   handleDocumentClick(event: any) {
+    // Don't close the typeahead when we select an item from it
+    if (event.target && (event.target as HTMLElement).classList.contains('list-group-item')) {
+      return;
+    }
     this.hasFocus = false;
   }
 
@@ -319,7 +335,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
       case KEY_CODES.DELETE:
       {
         if (this.typeaheadControl.value !== null && this.typeaheadControl.value !== undefined && this.typeaheadControl.value.trim() !== '') {
-          return;
+          break;
         }
         const selected = this.optionSelection.selected();
         if (selected.length > 0) {
@@ -352,12 +368,14 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
       if (!untoggleAll && this.settings.savedData) {
         const isArray = this.settings.savedData.hasOwnProperty('length');
          if (isArray) {
-          this.optionSelection = new SelectionModel<any>(true, this.settings.savedData);
+          this.optionSelection = new SelectionModel<any>(true, this.settings.savedData); // NOTE: Library-detail will break the 'x' button due to how savedData is being set to avoid state reset
          } else {
           this.optionSelection = new SelectionModel<any>(true, [this.settings.savedData]);
          }
+         this.cdRef.markForCheck();
       } else {
         this.optionSelection.selected().forEach(item => this.optionSelection.toggle(item, false));
+        this.cdRef.markForCheck();
       }
 
       this.selectedData.emit(this.optionSelection.selected());
@@ -374,7 +392,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
     this.toggleSelection(opt);
 
     this.resetField();
-    this.onInputFocus(undefined);
+    this.onInputFocus();
   }
 
   addNewItem(title: string) {
@@ -386,7 +404,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
     this.toggleSelection(newItem);
 
     this.resetField();
-    this.onInputFocus(undefined);
+    this.onInputFocus();
   }
 
   /**
@@ -409,7 +427,7 @@ export class TypeaheadComponent implements OnInit, OnDestroy {
     });
   }
 
-  onInputFocus(event: any) {
+  onInputFocus(event?: any) {
     if (event) {
       event.stopPropagation();
       event.preventDefault();

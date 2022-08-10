@@ -48,9 +48,11 @@ button:disabled, .form-control:disabled, .form-control[readonly], .disabled, :di
   text-align: center;
   padding: 0.375em;
   border-radius: 2rem !important;
+  border: none;
 
   &:hover, &:focus {
     color: var(--body-text-color);
+    border: none;
   }
 }
   

@@ -1,7 +1,7 @@
 <div #companionBar>
     <app-side-nav-companion-bar *ngIf="series !== undefined" [hasFilter]="true" (filterOpen)="filterOpen.emit($event)" [filterActive]="filterActive">
         <ng-container title>
-            <h2 style="margin-bottom: 0px" *ngIf="collectionTag !== undefined">
+            <h2 *ngIf="collectionTag !== undefined">
                 <app-card-actionables [disabled]="actionInProgress" (actionHandler)="performAction($event)" [actions]="collectionTagActions" [labelBy]="collectionTag.title" iconClass="fa-ellipsis-v"></app-card-actionables>
                 {{collectionTag.title}}<span class="ms-1" *ngIf="collectionTag.promoted">(<i aria-hidden="true" class="fa fa-angle-double-up"></i>)</span>
             </h2>
@@ -11,7 +11,7 @@
 
 <div [ngStyle]="{'height': ScrollingBlockHeight}" class="main-container container-fluid pt-2" *ngIf="collectionTag !== undefined" #scrollingBlock>
     <div class="row mb-3">
-        <div class="col-md-2 col-xs-4 col-sm-6 d-none d-sm-block">            
+        <div class="col-md-2 col-xs-4 col-sm-6 d-none d-sm-block" *ngIf="collectionTag.coverImage !== '' && collectionTag.coverImage !== undefined && collectionTag.coverImage !== null">            
             <app-image maxWidth="481px" [imageUrl]="tagImage"></app-image>
         </div>
         <div class="col-md-10 col-xs-8 col-sm-6 mt-2">
@@ -28,7 +28,7 @@
         [pagination]="seriesPagination"
         [filterSettings]="filterSettings"
         [filterOpen]="filterOpen"
-
+        [parentScroll]="scrollingBlock"
         [jumpBarKeys]="jumpbarKeys"
         (applyFilter)="updateFilter($event)">
         <ng-template #cardItem let-item let-position="idx">
@@ -37,10 +37,4 @@
             ></app-series-card>
         </ng-template>
     </app-card-detail-layout>
-
-    <div class="mx-auto" *ngIf="isLoading" style="width: 200px;">
-        <div class="spinner-border text-secondary loading" role="status">
-            <span class="invisible">Loading...</span>
-        </div>
-    </div>
 </div>

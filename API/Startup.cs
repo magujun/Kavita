@@ -22,6 +22,7 @@ using Kavita.Common.EnvironmentInfo;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -30,6 +31,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 using Microsoft.OpenApi.Models;
 using TaskScheduler = API.Services.TaskScheduler;
 
@@ -53,8 +55,10 @@ namespace API
             services.AddControllers();
             services.Configure<ForwardedHeadersOptions>(options =>
             {
-                options.ForwardedHeaders =
-                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardedHeaders = ForwardedHeaders.All;
+                foreach(var proxy in _config.GetSection("KnownProxies").AsEnumerable().Where(c => c.Value != null)) {
+                    options.KnownProxies.Add(IPAddress.Parse(proxy.Value));
+                }
             });
             services.AddCors();
             services.AddIdentityServices(_config);
@@ -124,13 +128,6 @@ namespace API
             });
 
             services.AddResponseCaching();
-
-            services.Configure<ForwardedHeadersOptions>(options =>
-            {
-                options.ForwardedHeaders =
-                    ForwardedHeaders.All;
-            });
-
 
             services.AddHangfire(configuration => configuration
                 .UseSimpleAssemblyNameTypeSerializer()
@@ -210,10 +207,7 @@ namespace API
 
             app.UseResponseCompression();
 
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
-            });
+            app.UseForwardedHeaders();
 
             app.UseRouting();
 
@@ -238,7 +232,13 @@ namespace API
 
             app.UseStaticFiles(new StaticFileOptions
             {
-                ContentTypeProvider = new FileExtensionContentTypeProvider()
+                ContentTypeProvider = new FileExtensionContentTypeProvider(),
+                HttpsCompression = HttpsCompressionMode.Compress,
+                OnPrepareResponse = ctx =>
+                {
+                    const int durationInSeconds = 60 * 60 * 24;
+                    ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public,max-age=" + durationInSeconds;
+                }
             });
 
             app.Use(async (context, next) =>
@@ -294,7 +294,6 @@ namespace API
             if (socket.LocalEndPoint is IPEndPoint endPoint) return endPoint.Address.ToString();
             throw new KavitaException("No network adapters with an IPv4 address in the system!");
         }
-
 
     }
 }

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, ElementRef, EventEmitter, HostListener, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterContentChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -22,14 +22,19 @@ import { ActionService } from 'src/app/_services/action.service';
 import { CollectionTagService } from 'src/app/_services/collection-tag.service';
 import { ImageService } from 'src/app/_services/image.service';
 import { EVENTS, MessageHubService } from 'src/app/_services/message-hub.service';
+import { ScrollService } from 'src/app/_services/scroll.service';
 import { SeriesService } from 'src/app/_services/series.service';
 
 @Component({
   selector: 'app-collection-detail',
   templateUrl: './collection-detail.component.html',
-  styleUrls: ['./collection-detail.component.scss']
+  styleUrls: ['./collection-detail.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CollectionDetailComponent implements OnInit, OnDestroy {
+export class CollectionDetailComponent implements OnInit, OnDestroy, AfterContentChecked {
+
+  @ViewChild('scrollingBlock') scrollingBlock: ElementRef<HTMLDivElement> | undefined;
+  @ViewChild('companionBar') companionBar: ElementRef<HTMLDivElement> | undefined;
 
   @ViewChild('scrollingBlock') scrollingBlock: ElementRef<HTMLDivElement> | undefined;
   @ViewChild('companionBar') companionBar: ElementRef<HTMLDivElement> | undefined;
@@ -61,31 +66,48 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
 
     switch (action) {
       case Action.AddToReadingList:
-        this.actionService.addMultipleSeriesToReadingList(selectedSeries, () => {
+        this.actionService.addMultipleSeriesToReadingList(selectedSeries, (success) => {
+          if (success) this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
+        });
+        break;
+      case Action.AddToWantToReadList:
+        this.actionService.addMultipleSeriesToWantToReadList(selectedSeries.map(s => s.id), () => {
           this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
+        });
+        break;
+      case Action.RemoveFromWantToReadList:
+        this.actionService.removeMultipleSeriesFromWantToReadList(selectedSeries.map(s => s.id), () => {
+          this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.AddToCollection:
-        this.actionService.addMultipleSeriesToCollectionTag(selectedSeries, () => {
-          this.bulkSelectionService.deselectAll();
+        this.actionService.addMultipleSeriesToCollectionTag(selectedSeries, (success) => {
+          if (success) this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.MarkAsRead:
         this.actionService.markMultipleSeriesAsRead(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.MarkAsUnread:
         this.actionService.markMultipleSeriesAsUnread(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.Delete:
         this.actionService.deleteMultipleSeries(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
+          this.cdRef.markForCheck();
         });
         break;
     }
@@ -106,7 +128,8 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
     private seriesService: SeriesService, private toastr: ToastrService, private actionFactoryService: ActionFactoryService, 
     private modalService: NgbModal, private titleService: Title, 
     public bulkSelectionService: BulkSelectionService, private actionService: ActionService, private messageHub: MessageHubService, 
-    private filterUtilityService: FilterUtilitiesService, private utilityService: UtilityService, @Inject(DOCUMENT) private document: Document) {
+    private filterUtilityService: FilterUtilitiesService, private utilityService: UtilityService, @Inject(DOCUMENT) private document: Document,
+    private readonly cdRef: ChangeDetectorRef, private scrollService: ScrollService) {
       this.router.routeReuseStrategy.shouldReuseRoute = () => false;
 
       const routeId = this.route.snapshot.paramMap.get('id');
@@ -121,6 +144,7 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
       this.filterSettings.presets.collectionTags = [tagId];
       this.filterActiveCheck = this.seriesService.createSeriesFilter();
       this.filterActiveCheck.collectionTags = [tagId];
+      this.cdRef.markForCheck();
       
       this.updateTag(tagId);
   }
@@ -138,6 +162,10 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
         this.loadPage();
       }
     });
+  }
+
+  ngAfterContentChecked(): void {
+    this.scrollService.setScrollContainer(this.scrollingBlock);
   }
 
   ngOnDestroy() {
@@ -172,45 +200,22 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
       this.summary = (this.collectionTag.summary === null ? '' : this.collectionTag.summary).replace(/\n/g, '<br>');
       this.tagImage = this.imageService.randomize(this.imageService.getCollectionCoverImage(this.collectionTag.id));
       this.titleService.setTitle('Kavita - ' + this.collectionTag.title + ' Collection');
+      this.cdRef.markForCheck();
     });
   }
 
-  // onPageChange(pagination: Pagination) {
-  //   this.filterUtilityService.updateUrlFromFilter(this.seriesPagination, undefined);
-  //   this.loadPage();
-  // }
-
   loadPage() {
     this.filterActive = !this.utilityService.deepEqual(this.filter, this.filterActiveCheck);
+    this.isLoading = true;
+    this.cdRef.markForCheck();
+    
     this.seriesService.getAllSeries(undefined, undefined, this.filter).pipe(take(1)).subscribe(series => {
       this.series = series.result;
       this.seriesPagination = series.pagination;
-
-      const keys: {[key: string]: number} = {};
-      series.result.forEach(s => {
-        let ch = s.name.charAt(0);
-        if (/\d|\#|!|%|@|\(|\)|\^|\*/g.test(ch)) {
-          ch = '#';
-        }
-        if (!keys.hasOwnProperty(ch)) {
-          keys[ch] = 0;
-        }
-        keys[ch] += 1;
-      });
-      this.jumpbarKeys = Object.keys(keys).map(k => {
-        return {
-          key: k,
-          size: keys[k],
-          title: k.toUpperCase()
-        }
-      }).sort((a, b) => {
-        if (a.key < b.key) return -1;
-        if (a.key > b.key) return 1;
-        return 0;
-      });
-
+      this.jumpbarKeys = this.utilityService.getJumpKeys(this.series, (series: Series) => series.name);
       this.isLoading = false;
       window.scrollTo(0, 0);
+      this.cdRef.markForCheck();
     });
   }
 
@@ -245,6 +250,8 @@ export class CollectionDetailComponent implements OnInit, OnDestroy {
       this.loadPage();
       if (results.coverImageUpdated) {
         this.tagImage = this.imageService.randomize(this.imageService.getCollectionCoverImage(collectionTag.id));
+        this.collectionTag.coverImage = this.imageService.randomize(this.imageService.getCollectionCoverImage(collectionTag.id));
+        this.cdRef.markForCheck();
       }
     });
   }

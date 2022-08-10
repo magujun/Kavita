@@ -22,7 +22,8 @@ public enum AppUserIncludes
     Bookmarks = 4,
     ReadingLists = 8,
     Ratings = 16,
-    UserPreferences = 32
+    UserPreferences = 32,
+    WantToRead = 64
 }
 
 public interface IUserRepository
@@ -57,6 +58,7 @@ public interface IUserRepository
 
     Task<IEnumerable<AppUserPreferences>> GetAllPreferencesByThemeAsync(int themeId);
     Task<bool> HasAccessToLibrary(int libraryId, int userId);
+    Task<IEnumerable<AppUser>> GetAllUsersAsync(AppUserIncludes includeFlags);
 }
 
 public class UserRepository : IUserRepository
@@ -175,6 +177,11 @@ public class UserRepository : IUserRepository
             query = query.Include(u => u.UserPreferences);
         }
 
+        if (includeFlags.HasFlag(AppUserIncludes.WantToRead))
+        {
+            query = query.Include(u => u.WantToRead);
+        }
+
 
 
         return query;
@@ -204,6 +211,7 @@ public class UserRepository : IUserRepository
         return await _context.Users
             .Include(u => u.ReadingLists)
             .ThenInclude(l => l.Items)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.UserName == username);
     }
 
@@ -216,6 +224,7 @@ public class UserRepository : IUserRepository
     {
         return await _context.AppUserBookmark
             .Where(b => bookmarkIds.Contains(b.Id))
+            .OrderBy(b => b.Created)
             .ToListAsync();
     }
 
@@ -243,7 +252,14 @@ public class UserRepository : IUserRepository
     {
         return await _context.Library
             .Include(l => l.AppUsers)
+            .AsSplitQuery()
             .AnyAsync(library => library.AppUsers.Any(user => user.Id == userId));
+    }
+
+    public async Task<IEnumerable<AppUser>> GetAllUsersAsync(AppUserIncludes includeFlags)
+    {
+        var query = AddIncludesToQuery(_context.Users.AsQueryable(), includeFlags);
+        return await query.ToListAsync();
     }
 
     public async Task<IEnumerable<AppUser>> GetAdminUsersAsync()
@@ -355,6 +371,7 @@ public class UserRepository : IUserRepository
                     Folders = l.Folders.Select(x => x.Path).ToList()
                 }).ToList()
             })
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
     }
@@ -383,6 +400,7 @@ public class UserRepository : IUserRepository
                     Folders = l.Folders.Select(x => x.Path).ToList()
                 }).ToList()
             })
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
     }

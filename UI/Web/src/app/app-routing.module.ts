@@ -46,6 +46,10 @@ const routes: Routes = [
     loadChildren: () => import('../app/dashboard/dashboard.module').then(m => m.DashboardModule)
   },
   {
+    path: 'want-to-read',
+    loadChildren: () => import('../app/want-to-read/want-to-read.module').then(m => m.WantToReadModule)
+  },
+  {
     path: 'library',
     runGuardsAndResolvers: 'always',
     canActivate: [AuthGuard, LibraryAccessGuard],
@@ -75,7 +79,6 @@ const routes: Routes = [
     ]
   },
   {path: 'login', loadChildren: () => import('../app/registration/registration.module').then(m => m.RegistrationModule)},
-  //{path: '', pathMatch: 'full', redirectTo: 'login'}, // This shouldn't be needed
   {path: '**', pathMatch: 'full', redirectTo: 'libraries'},
   {path: '**', pathMatch: 'prefix', redirectTo: 'libraries'},
 ];

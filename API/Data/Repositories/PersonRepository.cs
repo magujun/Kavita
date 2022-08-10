@@ -16,6 +16,7 @@ public interface IPersonRepository
     Task<IList<Person>> GetAllPeople();
     Task RemoveAllPeopleNoLongerAssociated(bool removeExternal = false);
     Task<IList<PersonDto>> GetAllPeopleDtosForLibrariesAsync(List<int> libraryIds);
+    Task<int> GetCountAsync();
 }
 
 public class PersonRepository : IPersonRepository
@@ -53,6 +54,7 @@ public class PersonRepository : IPersonRepository
             .Include(p => p.SeriesMetadatas)
             .Include(p => p.ChapterMetadatas)
             .Where(p => p.SeriesMetadatas.Count == 0 && p.ChapterMetadatas.Count == 0)
+            .AsSplitQuery()
             .ToListAsync();
 
         _context.Person.RemoveRange(peopleWithNoConnections);
@@ -68,8 +70,14 @@ public class PersonRepository : IPersonRepository
             .Distinct()
             .OrderBy(p => p.Name)
             .AsNoTracking()
+            .AsSplitQuery()
             .ProjectTo<PersonDto>(_mapper.ConfigurationProvider)
             .ToListAsync();
+    }
+
+    public async Task<int> GetCountAsync()
+    {
+        return await _context.Person.CountAsync();
     }
 
 

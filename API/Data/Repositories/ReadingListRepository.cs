@@ -17,7 +17,7 @@ public interface IReadingListRepository
     Task<IEnumerable<ReadingListItemDto>> GetReadingListItemDtosByIdAsync(int readingListId, int userId);
     Task<ReadingListDto> GetReadingListDtoByIdAsync(int readingListId, int userId);
     Task<IEnumerable<ReadingListItemDto>> AddReadingProgressModifiers(int userId, IList<ReadingListItemDto> items);
-    Task<ReadingListDto> GetReadingListDtoByTitleAsync(string title);
+    Task<ReadingListDto> GetReadingListDtoByTitleAsync(int userId, string title);
     Task<IEnumerable<ReadingListItem>> GetReadingListItemsByIdAsync(int readingListId);
 
     Task<IEnumerable<ReadingListDto>> GetReadingListDtosForSeriesAndUserAsync(int userId, int seriesId,
@@ -96,6 +96,7 @@ public class ReadingListRepository : IReadingListRepository
         var query = _context.ReadingList
             .Where(l => l.AppUserId == userId || (includePromoted && l.Promoted ))
             .Where(l => l.Items.Any(i => i.SeriesId == seriesId))
+            .AsSplitQuery()
             .OrderBy(l => l.LastModified)
             .ProjectTo<ReadingListDto>(_mapper.ConfigurationProvider)
             .AsNoTracking();
@@ -108,6 +109,7 @@ public class ReadingListRepository : IReadingListRepository
         return await _context.ReadingList
             .Where(r => r.Id == readingListId)
             .Include(r => r.Items.OrderBy(item => item.Order))
+            .AsSplitQuery()
             .SingleOrDefaultAsync();
     }
 
@@ -116,6 +118,7 @@ public class ReadingListRepository : IReadingListRepository
         var userLibraries = _context.Library
             .Include(l => l.AppUsers)
             .Where(library => library.AppUsers.Any(user => user.Id == userId))
+            .AsSplitQuery()
             .AsNoTracking()
             .Select(library => library.Id)
             .ToList();
@@ -165,6 +168,7 @@ public class ReadingListRepository : IReadingListRepository
             })
             .Where(o => userLibraries.Contains(o.LibraryId))
             .OrderBy(rli => rli.Order)
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
 
@@ -211,10 +215,10 @@ public class ReadingListRepository : IReadingListRepository
         return items;
     }
 
-    public async Task<ReadingListDto> GetReadingListDtoByTitleAsync(string title)
+    public async Task<ReadingListDto> GetReadingListDtoByTitleAsync(int userId, string title)
     {
         return await _context.ReadingList
-            .Where(r => r.Title.Equals(title))
+            .Where(r => r.Title.Equals(title) && r.AppUserId == userId)
             .ProjectTo<ReadingListDto>(_mapper.ConfigurationProvider)
             .SingleOrDefaultAsync();
     }

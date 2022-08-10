@@ -17,7 +17,7 @@
 
 .card-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 165px);
+  grid-template-columns: repeat(auto-fill, 158px);
   grid-gap: 0.5rem;
   justify-content: space-around;
 }
@@ -35,4 +35,9 @@
   overflow-y: auto;
   position: relative;
   overscroll-behavior-y: none;
+}
+
+h2 {
+  margin-bottom: 0;
+  word-break: break-all;
 }
