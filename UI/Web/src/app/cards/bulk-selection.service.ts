@@ -146,7 +146,14 @@ export class BulkSelectionService {
     // else returns volume/chapter items
     const allowedActions = [Action.AddToReadingList, Action.MarkAsRead, Action.MarkAsUnread, Action.AddToCollection, Action.Delete, Action.AddToWantToReadList, Action.RemoveFromWantToReadList];
     if (Object.keys(this.selectedCards).filter(item => item === 'series').length > 0) {
-      return this.actionFactory.getSeriesActions(callback).filter(item => allowedActions.includes(item.action));
+      let actions = this.actionFactory.getSeriesActions(callback).filter(item => allowedActions.includes(item.action));
+      if (this.activeRoute.startsWith('/want-to-read')) {
+        const removeFromWantToRead = {...actions[0]};
+        removeFromWantToRead.action = Action.RemoveFromWantToReadList;
+        removeFromWantToRead.title = 'Remove from Want to Read';
+        actions.push(removeFromWantToRead);
+      }
+      return actions;
     }
 
     if (Object.keys(this.selectedCards).filter(item => item === 'bookmark').length > 0) {

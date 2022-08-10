@@ -79,8 +79,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       );
 
       this.loadRecentlyAdded$.pipe(debounceTime(1000), takeUntil(this.onDestroy)).subscribe(() => {
-        this.loadRecentlyUpdated();
-        this.loadRecentlyAddedSeries();
+        this.loadRecentlyAdded();
         this.cdRef.markForCheck();
       });
   }
@@ -105,7 +104,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   reloadSeries() {
     this.loadOnDeck();
-    this.loadRecentlyUpdated();
+    this.loadRecentlyAdded();
     this.loadRecentlyAddedSeries();
   }
 
@@ -145,7 +144,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 
-  loadRecentlyUpdated() {
+  loadRecentlyAdded() {
     let api = this.seriesService.getRecentlyUpdatedSeries();
     if (this.libraryId > 0) {
       api = this.seriesService.getRecentlyUpdatedSeries();

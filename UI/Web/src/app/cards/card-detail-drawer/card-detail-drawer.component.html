@@ -16,8 +16,8 @@
                     <div class="container-fluid" style="overflow: auto">
 
                         <div class="row g-0">
-                            <div class="d-none d-md-block col-md-2 col-lg-1">            
-                                <app-image class="me-2" width="74px" [imageUrl]="chapter.coverImage"></app-image>
+                            <div class="d-none d-md-block col-md-2 col-lg-1">         
+                                <app-image class="me-2" width="74px" [imageUrl]="coverImageUrl"></app-image>
                             </div> 
                             <div class="col-md-10 col-lg-11">
                                 <ng-container *ngIf="summary.length > 0; else noSummary">
@@ -95,7 +95,7 @@
                 </ng-template>
             </li>
 
-            <li [ngbNavItem]="tabs[TabID.Cover]">
+            <li [ngbNavItem]="tabs[TabID.Cover]" [disabled]="!(isAdmin$ | async)">
                 <a ngbNavLink>{{tabs[TabID.Cover].title}}</a>
                 <ng-template ngbNavContent>
                     <app-cover-image-chooser [(imageUrls)]="imageUrls" 
@@ -108,14 +108,14 @@
                 </ng-template>
             </li>
 
-            <li [ngbNavItem]="tabs[TabID.Files]">
+            <li [ngbNavItem]="tabs[TabID.Files]" [disabled]="!(isAdmin$ | async)">
                 <a ngbNavLink>{{tabs[TabID.Files].title}}</a>
                 <ng-template ngbNavContent>
                     <h4 *ngIf="!utilityService.isChapter(data)">{{utilityService.formatChapterName(libraryType) + 's'}}</h4>
                     <ul class="list-unstyled">
                         <li class="d-flex my-4" *ngFor="let chapter of chapters">
                             <a (click)="readChapter(chapter)" href="javascript:void(0);" title="Read {{utilityService.formatChapterName(libraryType, true, false)}} {{formatChapterNumber(chapter)}}">
-                                <app-image class="me-2" width="74px" [imageUrl]="chapter.coverImage"></app-image>
+                                <app-image class="me-2" width="74px" [imageUrl]="imageService.getChapterCoverImage(chapter.id)"></app-image>
                             </a>
                             <div class="flex-grow-1">
                                 <h5 class="mt-0 mb-1">

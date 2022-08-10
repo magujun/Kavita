@@ -28,11 +28,12 @@ export enum EVENTS {
    */
   CleanupProgress = 'CleanupProgress',
   /**
-   * A subtype of NotificationProgress that represnts a user downloading a file or group of files
+   * A subtype of NotificationProgress that represnts a user downloading a file or group of files.
+   * Note: In v0.5.5, this is being replaced by an inbrowser experience. The message is changed and this will be moved to dashboard view once built
    */
   DownloadProgress = 'DownloadProgress',
   /**
-   * A generic progress event 
+   * A generic progress event
    */
   NotificationProgress = 'NotificationProgress',
   /**
@@ -107,15 +108,15 @@ export class MessageHubService {
 
   /**
    * Tests that an event is of the type passed
-   * @param event 
-   * @param eventType 
-   * @returns 
+   * @param event
+   * @param eventType
+   * @returns
    */
   public isEventType(event: Message<any>, eventType: EVENTS) {
     if (event.event == EVENTS.NotificationProgress) {
       const notification = event.payload as NotificationProgressEvent;
       return notification.eventType.toLowerCase() == eventType.toLowerCase();
-    } 
+    }
     return event.event === eventType;
   }
 

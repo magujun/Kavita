@@ -50,9 +50,7 @@ export class ReadingListItemComponent implements OnInit {
       chapterNum = this.utilityService.cleanSpecialTitle(item.chapterNumber);
     }
 
-    if (this.title === '') {
-      this.title = this.utilityService.formatChapterName(this.libraryTypes[item.libraryId], true, true) + chapterNum;
-    }
+    this.title = this.utilityService.formatChapterName(this.libraryTypes[item.libraryId], true, true) + chapterNum;
     this.cdRef.markForCheck();
   }
 

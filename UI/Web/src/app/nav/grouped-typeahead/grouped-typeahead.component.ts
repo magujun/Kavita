@@ -1,4 +1,4 @@
-import { Component, ContentChild, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
@@ -8,7 +8,8 @@ import { SearchResultGroup } from '../../_models/search/search-result-group';
 @Component({
   selector: 'app-grouped-typeahead',
   templateUrl: './grouped-typeahead.component.html',
-  styleUrls: ['./grouped-typeahead.component.scss']
+  styleUrls: ['./grouped-typeahead.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
   /**
@@ -84,11 +85,12 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
   }
 
 
-  constructor() { }
+  constructor(private readonly cdRef: ChangeDetectorRef) { }
 
   @HostListener('window:click', ['$event'])
   handleDocumentClick(event: any) {
     this.close();
+
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -107,12 +109,14 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.typeaheadForm.addControl('typeahead', new UntypedFormControl(this.initialValue, []));
+    this.cdRef.markForCheck();
 
     this.typeaheadForm.valueChanges.pipe(debounceTime(this.debounceTime), takeUntil(this.onDestroy)).subscribe(change => {
       const value = this.typeaheadForm.get('typeahead')?.value;
 
       if (value != undefined && value != '' && !this.hasFocus) {
         this.hasFocus = true;
+        this.cdRef.markForCheck();
       }
 
       if (value != undefined && value.length >= this.minQueryLength) {
@@ -120,6 +124,7 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
         if (this.prevSearchTerm === value) return;
         this.inputChanged.emit(value);
         this.prevSearchTerm = value;
+        this.cdRef.markForCheck();
       }
     });
   }
@@ -156,6 +161,7 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
     this.prevSearchTerm = '';
     this.typeaheadForm.get('typeahead')?.setValue(this.initialValue);
     this.clearField.emit();
+    this.cdRef.markForCheck();
   }
 
 
@@ -170,17 +176,20 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
       this.resetField();
     }
     this.hasFocus = false;
+    this.cdRef.markForCheck();
     this.focusChanged.emit(this.hasFocus);
   }
 
   open(event?: FocusEvent) {
     this.hasFocus = true;
     this.focusChanged.emit(this.hasFocus);
+    this.cdRef.markForCheck();
   }
 
   public clear() {
     this.prevSearchTerm = '';
     this.typeaheadForm.get('typeahead')?.setValue(this.initialValue);
+    this.cdRef.markForCheck();
   }
 
 }

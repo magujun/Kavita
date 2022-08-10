@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using API.Data;
 using API.Entities.Enums;
-using API.Extensions;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +16,7 @@ namespace API.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IDirectoryService _directoryService;
+        private const int ImageCacheSeconds = 1 * 60;
 
         /// <inheritdoc />
         public ImageController(IUnitOfWork unitOfWork, IDirectoryService directoryService)
@@ -31,7 +31,7 @@ namespace API.Controllers
         /// <param name="chapterId"></param>
         /// <returns></returns>
         [HttpGet("chapter-cover")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetChapterCoverImage(int chapterId)
         {
             var path = Path.Join(_directoryService.CoverImageDirectory, await _unitOfWork.ChapterRepository.GetChapterCoverImageAsync(chapterId));
@@ -47,7 +47,7 @@ namespace API.Controllers
         /// <param name="volumeId"></param>
         /// <returns></returns>
         [HttpGet("volume-cover")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetVolumeCoverImage(int volumeId)
         {
             var path = Path.Join(_directoryService.CoverImageDirectory, await _unitOfWork.VolumeRepository.GetVolumeCoverImageAsync(volumeId));
@@ -62,15 +62,13 @@ namespace API.Controllers
         /// </summary>
         /// <param name="seriesId">Id of Series</param>
         /// <returns></returns>
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         [HttpGet("series-cover")]
         public async Task<ActionResult> GetSeriesCoverImage(int seriesId)
         {
             var path = Path.Join(_directoryService.CoverImageDirectory, await _unitOfWork.SeriesRepository.GetSeriesCoverImageAsync(seriesId));
             if (string.IsNullOrEmpty(path) || !_directoryService.FileSystem.File.Exists(path)) return BadRequest($"No cover image");
             var format = _directoryService.FileSystem.Path.GetExtension(path).Replace(".", "");
-
-            Response.AddCacheHeader(path);
 
             return PhysicalFile(path, "image/" + format, _directoryService.FileSystem.Path.GetFileName(path));
         }
@@ -81,7 +79,7 @@ namespace API.Controllers
         /// <param name="collectionTagId"></param>
         /// <returns></returns>
         [HttpGet("collection-cover")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetCollectionCoverImage(int collectionTagId)
         {
             var path = Path.Join(_directoryService.CoverImageDirectory, await _unitOfWork.CollectionTagRepository.GetCoverImageAsync(collectionTagId));
@@ -97,7 +95,7 @@ namespace API.Controllers
         /// <param name="readingListId"></param>
         /// <returns></returns>
         [HttpGet("readinglist-cover")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetReadingListCoverImage(int readingListId)
         {
             var path = Path.Join(_directoryService.CoverImageDirectory, await _unitOfWork.ReadingListRepository.GetCoverImageAsync(readingListId));
@@ -116,7 +114,7 @@ namespace API.Controllers
         /// <param name="apiKey">API Key for user. Needed to authenticate request</param>
         /// <returns></returns>
         [HttpGet("bookmark")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetBookmarkImage(int chapterId, int pageNum, string apiKey)
         {
             var userId = await _unitOfWork.UserRepository.GetUserIdByApiKeyAsync(apiKey);
@@ -136,9 +134,9 @@ namespace API.Controllers
         /// </summary>
         /// <param name="filename">Filename of file. This is used with upload/upload-by-url</param>
         /// <returns></returns>
-        [Authorize(Policy="RequireAdminRole")]
+        [AllowAnonymous]
         [HttpGet("cover-upload")]
-        [ResponseCache(CacheProfileName = "Images")]
+        [ResponseCache(Duration = ImageCacheSeconds, Location = ResponseCacheLocation.Client, NoStore = false)]
         public ActionResult GetCoverUploadImage(string filename)
         {
             if (filename.Contains("..")) return BadRequest("Invalid Filename");
