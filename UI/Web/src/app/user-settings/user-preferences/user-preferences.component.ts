@@ -1,5 +1,5 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { map, shareReplay, take, takeUntil } from 'rxjs/operators';
 import { Title } from '@angular/platform-browser';
@@ -22,7 +22,8 @@ enum AccordionPanelID {
 @Component({
   selector: 'app-user-preferences',
   templateUrl: './user-preferences.component.html',
-  styleUrls: ['./user-preferences.component.scss']
+  styleUrls: ['./user-preferences.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserPreferencesComponent implements OnInit, OnDestroy {
 
@@ -35,8 +36,8 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
   bookColorThemes = bookColorThemes;
   pageLayoutModes = pageLayoutModes;
 
-  settingsForm: FormGroup = new FormGroup({});
-  passwordChangeForm: FormGroup = new FormGroup({});
+  settingsForm: UntypedFormGroup = new UntypedFormGroup({});
+  passwordChangeForm: UntypedFormGroup = new UntypedFormGroup({});
   user: User | undefined = undefined;
   hasChangePasswordAbility: Observable<boolean> = of(false);
 
@@ -62,10 +63,14 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
     return AccordionPanelID;
   }
 
+  public get password() { return this.passwordChangeForm.get('password'); }
+  public get confirmPassword() { return this.passwordChangeForm.get('confirmPassword'); }
+
   constructor(private accountService: AccountService, private toastr: ToastrService, private bookService: BookService,
     private titleService: Title, private route: ActivatedRoute, private settingsService: SettingsService,
-    private router: Router) {
+    private router: Router, private readonly cdRef: ChangeDetectorRef) {
     this.fontFamilies = this.bookService.getFontFamilies().map(f => f.title);
+    this.cdRef.markForCheck();
 
     this.route.fragment.subscribe(frag => {
       const tab = this.tabs.filter(item => item.fragment === frag);
@@ -74,10 +79,12 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
       } else {
         this.active = this.tabs[0]; // Default to first tab
       }
+      this.cdRef.markForCheck();
     });
 
     this.settingsService.getOpdsEnabled().subscribe(res => {
       this.opdsEnabled = res;
+      this.cdRef.markForCheck();
     });
   }
 
@@ -87,6 +94,7 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
     this.hasChangePasswordAbility = this.accountService.currentUser$.pipe(takeUntil(this.onDestroy), shareReplay(), map(user => {
       return user !== undefined && (this.accountService.hasAdminRole(user) || this.accountService.hasChangePasswordRole(user));
     }));
+    this.cdRef.markForCheck();
 
     forkJoin({
       user: this.accountService.currentUser$.pipe(take(1)),
@@ -104,40 +112,46 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
         this.user.preferences.bookReaderFontFamily = 'default';
       }
 
-      this.settingsForm.addControl('readingDirection', new FormControl(this.user.preferences.readingDirection, []));
-      this.settingsForm.addControl('scalingOption', new FormControl(this.user.preferences.scalingOption, []));
-      this.settingsForm.addControl('pageSplitOption', new FormControl(this.user.preferences.pageSplitOption, []));
-      this.settingsForm.addControl('autoCloseMenu', new FormControl(this.user.preferences.autoCloseMenu, []));
-      this.settingsForm.addControl('showScreenHints', new FormControl(this.user.preferences.showScreenHints, []));
-      this.settingsForm.addControl('readerMode', new FormControl(this.user.preferences.readerMode, []));
-      this.settingsForm.addControl('layoutMode', new FormControl(this.user.preferences.layoutMode, []));
-      this.settingsForm.addControl('bookReaderFontFamily', new FormControl(this.user.preferences.bookReaderFontFamily, []));
-      this.settingsForm.addControl('bookReaderFontSize', new FormControl(this.user.preferences.bookReaderFontSize, []));
-      this.settingsForm.addControl('bookReaderLineSpacing', new FormControl(this.user.preferences.bookReaderLineSpacing, []));
-      this.settingsForm.addControl('bookReaderMargin', new FormControl(this.user.preferences.bookReaderMargin, []));
-      this.settingsForm.addControl('bookReaderReadingDirection', new FormControl(this.user.preferences.bookReaderReadingDirection, []));
-      this.settingsForm.addControl('bookReaderTapToPaginate', new FormControl(!!this.user.preferences.bookReaderTapToPaginate, []));
-      this.settingsForm.addControl('bookReaderLayoutMode', new FormControl(this.user.preferences.bookReaderLayoutMode || BookPageLayoutMode.Default, []));
-      this.settingsForm.addControl('bookReaderThemeName', new FormControl(this.user?.preferences.bookReaderThemeName || bookColorThemes[0].name, []));
-      this.settingsForm.addControl('bookReaderImmersiveMode', new FormControl(this.user?.preferences.bookReaderImmersiveMode, []));
+      this.settingsForm.addControl('readingDirection', new UntypedFormControl(this.user.preferences.readingDirection, []));
+      this.settingsForm.addControl('scalingOption', new UntypedFormControl(this.user.preferences.scalingOption, []));
+      this.settingsForm.addControl('pageSplitOption', new UntypedFormControl(this.user.preferences.pageSplitOption, []));
+      this.settingsForm.addControl('autoCloseMenu', new UntypedFormControl(this.user.preferences.autoCloseMenu, []));
+      this.settingsForm.addControl('showScreenHints', new UntypedFormControl(this.user.preferences.showScreenHints, []));
+      this.settingsForm.addControl('readerMode', new UntypedFormControl(this.user.preferences.readerMode, []));
+      this.settingsForm.addControl('layoutMode', new UntypedFormControl(this.user.preferences.layoutMode, []));
+      this.settingsForm.addControl('bookReaderFontFamily', new UntypedFormControl(this.user.preferences.bookReaderFontFamily, []));
+      this.settingsForm.addControl('bookReaderFontSize', new UntypedFormControl(this.user.preferences.bookReaderFontSize, []));
+      this.settingsForm.addControl('bookReaderLineSpacing', new UntypedFormControl(this.user.preferences.bookReaderLineSpacing, []));
+      this.settingsForm.addControl('bookReaderMargin', new UntypedFormControl(this.user.preferences.bookReaderMargin, []));
+      this.settingsForm.addControl('bookReaderReadingDirection', new UntypedFormControl(this.user.preferences.bookReaderReadingDirection, []));
+      this.settingsForm.addControl('bookReaderTapToPaginate', new UntypedFormControl(!!this.user.preferences.bookReaderTapToPaginate, []));
+      this.settingsForm.addControl('bookReaderLayoutMode', new UntypedFormControl(this.user.preferences.bookReaderLayoutMode || BookPageLayoutMode.Default, []));
+      this.settingsForm.addControl('bookReaderThemeName', new UntypedFormControl(this.user?.preferences.bookReaderThemeName || bookColorThemes[0].name, []));
+      this.settingsForm.addControl('bookReaderImmersiveMode', new UntypedFormControl(this.user?.preferences.bookReaderImmersiveMode, []));
 
-      this.settingsForm.addControl('theme', new FormControl(this.user.preferences.theme, []));
-      this.settingsForm.addControl('globalPageLayoutMode', new FormControl(this.user.preferences.globalPageLayoutMode, []));
+      this.settingsForm.addControl('theme', new UntypedFormControl(this.user.preferences.theme, []));
+      this.settingsForm.addControl('globalPageLayoutMode', new UntypedFormControl(this.user.preferences.globalPageLayoutMode, []));
+      this.settingsForm.addControl('blurUnreadSummaries', new UntypedFormControl(this.user.preferences.blurUnreadSummaries, []));
+      this.settingsForm.addControl('promptForDownloadSize', new UntypedFormControl(this.user.preferences.promptForDownloadSize, []));
+      this.cdRef.markForCheck();
     });
 
-    this.passwordChangeForm.addControl('password', new FormControl('', [Validators.required]));
-    this.passwordChangeForm.addControl('confirmPassword', new FormControl('', [Validators.required]));
+    this.passwordChangeForm.addControl('password', new UntypedFormControl('', [Validators.required]));
+    this.passwordChangeForm.addControl('confirmPassword', new UntypedFormControl('', [Validators.required]));
 
     this.observableHandles.push(this.passwordChangeForm.valueChanges.subscribe(() => {
       const values = this.passwordChangeForm.value;
       this.passwordsMatch = values.password === values.confirmPassword;
+      this.cdRef.markForCheck();
     }));
 
     this.settingsForm.get('bookReaderImmersiveMode')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(mode => {
       if (mode) {
         this.settingsForm.get('bookReaderTapToPaginate')?.setValue(true);
+        this.cdRef.markForCheck();
       }
     });
+    this.cdRef.markForCheck();
   }
 
   ngOnDestroy() {
@@ -146,8 +160,6 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
     this.onDestroy.complete();
   }
 
-  public get password() { return this.passwordChangeForm.get('password'); }
-  public get confirmPassword() { return this.passwordChangeForm.get('confirmPassword'); }
 
   resetForm() {
     if (this.user === undefined) { return; }
@@ -169,12 +181,16 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
     this.settingsForm.get('theme')?.setValue(this.user.preferences.theme);
     this.settingsForm.get('bookReaderImmersiveMode')?.setValue(this.user.preferences.bookReaderImmersiveMode);
     this.settingsForm.get('globalPageLayoutMode')?.setValue(this.user.preferences.globalPageLayoutMode);
+    this.settingsForm.get('blurUnreadSummaries')?.setValue(this.user.preferences.blurUnreadSummaries);
+    this.settingsForm.get('promptForDownloadSize')?.setValue(this.user.preferences.promptForDownloadSize);
+    this.cdRef.markForCheck();
   }
 
   resetPasswordForm() {
     this.passwordChangeForm.get('password')?.setValue('');
     this.passwordChangeForm.get('confirmPassword')?.setValue('');
     this.resetPasswordErrors = [];
+    this.cdRef.markForCheck();
   }
 
   save() {
@@ -200,12 +216,15 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
       theme: modelSettings.theme,
       bookReaderImmersiveMode: modelSettings.bookReaderImmersiveMode,
       globalPageLayoutMode: parseInt(modelSettings.globalPageLayoutMode, 10),
+      blurUnreadSummaries: modelSettings.blurUnreadSummaries,
+      promptForDownloadSize: modelSettings.promptForDownloadSize,
     };
 
     this.observableHandles.push(this.accountService.updatePreferences(data).subscribe((updatedPrefs) => {
       this.toastr.success('Server settings updated');
       if (this.user) {
         this.user.preferences = updatedPrefs;
+        this.cdRef.markForCheck();
       }
       this.resetForm();
     }));

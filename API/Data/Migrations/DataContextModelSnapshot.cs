@@ -15,7 +15,7 @@ namespace API.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "6.0.5");
+            modelBuilder.HasAnnotation("ProductVersion", "6.0.7");
 
             modelBuilder.Entity("API.Entities.AppRole", b =>
                 {
@@ -58,6 +58,9 @@ namespace API.Data.Migrations
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfirmationToken")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")
@@ -134,7 +137,13 @@ namespace API.Data.Migrations
                     b.Property<int>("ChapterId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FileName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastModified")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Page")
@@ -169,6 +178,9 @@ namespace API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValue("#000000");
+
+                    b.Property<bool>("BlurUnreadSummaries")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("BookReaderFontFamily")
                         .HasColumnType("TEXT");
@@ -208,6 +220,9 @@ namespace API.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("PageSplitOption")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PromptForDownloadSize")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("ReaderMode")
@@ -749,6 +764,9 @@ namespace API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("AppUserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("AvgHoursToRead")
                         .HasColumnType("INTEGER");
 
@@ -810,6 +828,8 @@ namespace API.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AppUserId");
 
                     b.HasIndex("LibraryId");
 
@@ -1330,6 +1350,10 @@ namespace API.Data.Migrations
 
             modelBuilder.Entity("API.Entities.Series", b =>
                 {
+                    b.HasOne("API.Entities.AppUser", null)
+                        .WithMany("WantToRead")
+                        .HasForeignKey("AppUserId");
+
                     b.HasOne("API.Entities.Library", "Library")
                         .WithMany("Series")
                         .HasForeignKey("LibraryId")
@@ -1524,6 +1548,8 @@ namespace API.Data.Migrations
                     b.Navigation("UserPreferences");
 
                     b.Navigation("UserRoles");
+
+                    b.Navigation("WantToRead");
                 });
 
             modelBuilder.Entity("API.Entities.Chapter", b =>

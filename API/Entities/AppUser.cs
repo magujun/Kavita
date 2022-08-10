@@ -22,9 +22,17 @@ namespace API.Entities
         /// </summary>
         public ICollection<ReadingList> ReadingLists { get; set; }
         /// <summary>
+        /// A list of Series the user want's to read
+        /// </summary>
+        public ICollection<Series> WantToRead { get; set; }
+        /// <summary>
         /// An API Key to interact with external services, like OPDS
         /// </summary>
         public string ApiKey { get; set; }
+        /// <summary>
+        /// The confirmation token for the user (invite). This will be set to null after the user confirms.
+        /// </summary>
+        public string ConfirmationToken { get; set; }
 
 
         /// <inheritdoc />

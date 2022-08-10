@@ -3,7 +3,7 @@
         <div class="col-8"><h3>Theme Manager</h3></div>
         <div class="col-4" *ngIf="isAdmin">
             <button class="btn btn-primary float-end" (click)="scan()">
-                <i class="fa fa-refresh" aria-hidden="true"></i>&ngsp; Scan
+                <i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;Scan
             </button>
         </div>
     </div>
@@ -20,7 +20,7 @@
                   <h5 class="card-title">{{theme.name | sentenceCase}}</h5>
                   <h6 class="card-subtitle mb-2 text-muted">{{theme.provider | siteThemeProvider}}</h6>
                   <button class="btn btn-secondary me-2" [disabled]="theme.isDefault" *ngIf="isAdmin" (click)="updateDefault(theme)">Set Default</button>
-                  <button class="btn btn-primary" (click)="applyTheme(theme)" [disabled]="currentTheme?.id === theme.id">{{currentTheme?.id === theme.id ? 'Applied' : 'Apply'}}</button>
+                  <button class="btn btn-primary" (click)="applyTheme(theme)" [disabled]="currentTheme.id === theme.id">{{currentTheme.id === theme.id ? 'Applied' : 'Apply'}}</button>
                 </div>
               </div>
         </ng-container>

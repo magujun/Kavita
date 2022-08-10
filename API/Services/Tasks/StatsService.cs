@@ -4,13 +4,15 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using API.Data;
+using API.Data.Repositories;
 using API.DTOs.Stats;
-using API.DTOs.Theme;
 using API.Entities.Enums;
+using API.Entities.Enums.UserPreferences;
 using Flurl.Http;
 using Kavita.Common.EnvironmentInfo;
 using Kavita.Common.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace API.Services.Tasks;
@@ -24,12 +26,14 @@ public class StatsService : IStatsService
 {
     private readonly ILogger<StatsService> _logger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly DataContext _context;
     private const string ApiUrl = "https://stats.kavitareader.com";
 
-    public StatsService(ILogger<StatsService> logger, IUnitOfWork unitOfWork)
+    public StatsService(ILogger<StatsService> logger, IUnitOfWork unitOfWork, DataContext context)
     {
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _context = context;
 
         FlurlHttp.ConfigureClient(ApiUrl, cli =>
             cli.Settings.HttpClientFactory = new UntrustedCertClientFactory());
@@ -99,25 +103,37 @@ public class StatsService : IStatsService
 
     public async Task<ServerInfoDto> GetServerInfo()
     {
-        var installId = await _unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.InstallId);
-        var installVersion = await _unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.InstallVersion);
+        var serverSettings = await _unitOfWork.SettingsRepository.GetSettingsDtoAsync();
 
         var serverInfo = new ServerInfoDto
         {
-            InstallId = installId.Value,
+            InstallId = serverSettings.InstallId,
             Os = RuntimeInformation.OSDescription,
-            KavitaVersion = installVersion.Value,
+            KavitaVersion = serverSettings.InstallVersion,
             DotnetVersion = Environment.Version.ToString(),
-            IsDocker = new OsInfo(Array.Empty<IOsVersionAdapter>()).IsDocker,
+            IsDocker = new OsInfo().IsDocker,
             NumOfCores = Math.Max(Environment.ProcessorCount, 1),
             HasBookmarks = (await _unitOfWork.UserRepository.GetAllBookmarksAsync()).Any(),
             NumberOfLibraries = (await _unitOfWork.LibraryRepository.GetLibrariesAsync()).Count(),
             NumberOfCollections = (await _unitOfWork.CollectionTagRepository.GetAllTagsAsync()).Count(),
             NumberOfReadingLists = await _unitOfWork.ReadingListRepository.Count(),
-            OPDSEnabled = (await _unitOfWork.SettingsRepository.GetSettingsDtoAsync()).EnableOpds,
+            OPDSEnabled = serverSettings.EnableOpds,
             NumberOfUsers = (await _unitOfWork.UserRepository.GetAllUsers()).Count(),
             TotalFiles = await _unitOfWork.LibraryRepository.GetTotalFiles(),
+            TotalGenres = await _unitOfWork.GenreRepository.GetCountAsync(),
+            TotalPeople = await _unitOfWork.PersonRepository.GetCountAsync(),
+            UsingSeriesRelationships = await GetIfUsingSeriesRelationship(),
+            StoreBookmarksAsWebP = serverSettings.ConvertBookmarkToWebP,
+            MaxSeriesInALibrary = await MaxSeriesInAnyLibrary(),
+            MaxVolumesInASeries = await MaxVolumesInASeries(),
+            MaxChaptersInASeries = await MaxChaptersInASeries(),
         };
+
+        var usersWithPref = (await _unitOfWork.UserRepository.GetAllUsersAsync(AppUserIncludes.UserPreferences)).ToList();
+        serverInfo.UsersOnCardLayout =
+            usersWithPref.Count(u => u.UserPreferences.GlobalPageLayoutMode == PageLayoutMode.Cards);
+        serverInfo.UsersOnListLayout =
+            usersWithPref.Count(u => u.UserPreferences.GlobalPageLayoutMode == PageLayoutMode.List);
 
         var firstAdminUser = (await _unitOfWork.UserRepository.GetAdminUsersAsync()).FirstOrDefault();
 
@@ -131,5 +147,47 @@ public class StatsService : IStatsService
         }
 
         return serverInfo;
+    }
+
+    private Task<bool> GetIfUsingSeriesRelationship()
+    {
+        return _context.SeriesRelation.AnyAsync();
+    }
+
+    private async Task<int> MaxSeriesInAnyLibrary()
+    {
+        // If first time flow, just return 0
+        if (!await _context.Series.AnyAsync()) return 0;
+        return await _context.Series
+            .Select(s => _context.Library.Where(l => l.Id == s.LibraryId).SelectMany(l => l.Series).Count())
+            .MaxAsync();
+    }
+
+    private async Task<int> MaxVolumesInASeries()
+    {
+        // If first time flow, just return 0
+        if (!await _context.Volume.AnyAsync()) return 0;
+        return await _context.Volume
+            .Select(v => new
+            {
+                v.SeriesId,
+                Count = _context.Series.Where(s => s.Id == v.SeriesId).SelectMany(s => s.Volumes).Count()
+            })
+            .AsNoTracking()
+            .AsSplitQuery()
+            .MaxAsync(d => d.Count);
+    }
+
+    private async Task<int> MaxChaptersInASeries()
+    {
+        // If first time flow, just return 0
+        if (!await _context.Chapter.AnyAsync()) return 0;
+        return await _context.Series
+            .AsNoTracking()
+            .AsSplitQuery()
+            .MaxAsync(s => s.Volumes
+                .Where(v => v.Number == 0)
+                .SelectMany(v => v.Chapters)
+                .Count());
     }
 }

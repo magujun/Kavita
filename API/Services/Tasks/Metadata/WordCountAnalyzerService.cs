@@ -18,7 +18,7 @@ namespace API.Services.Tasks.Metadata;
 public interface IWordCountAnalyzerService
 {
     [DisableConcurrentExecution(timeoutInSeconds: 60 * 60 * 60)]
-    [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
+    [AutomaticRetry(Attempts = 2, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
     Task ScanLibrary(int libraryId, bool forceUpdate = false);
     Task ScanSeries(int libraryId, int seriesId, bool forceUpdate = true);
 }
@@ -45,6 +45,8 @@ public class WordCountAnalyzerService : IWordCountAnalyzerService
     }
 
 
+    [DisableConcurrentExecution(timeoutInSeconds: 60 * 60 * 60)]
+    [AutomaticRetry(Attempts = 2, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
     public async Task ScanLibrary(int libraryId, bool forceUpdate = false)
     {
         var sw = Stopwatch.StartNew();
@@ -143,6 +145,7 @@ public class WordCountAnalyzerService : IWordCountAnalyzerService
     private async Task ProcessSeries(Series series, bool forceUpdate = false, bool useFileName = true)
     {
         var isEpub = series.Format == MangaFormat.Epub;
+        var existingWordCount = series.WordCount;
         series.WordCount = 0;
         foreach (var volume in series.Volumes)
         {
@@ -216,6 +219,7 @@ public class WordCountAnalyzerService : IWordCountAnalyzerService
 
         }
 
+        if (series.WordCount == 0 && series.WordCount != 0) series.WordCount = existingWordCount; // Restore original word count if the file hasn't changed
         var seriesEstimate = _readerService.GetTimeEstimate(series.WordCount, series.Pages, isEpub);
         series.MinHoursToRead = seriesEstimate.MinHours;
         series.MaxHoursToRead = seriesEstimate.MaxHours;

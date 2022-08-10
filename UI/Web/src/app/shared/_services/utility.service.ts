@@ -18,6 +18,7 @@ export enum KEY_CODES {
   G = 'g',
   B = 'b',
   F = 'f',
+  H = 'h',
   BACKSPACE = 'Backspace',
   DELETE = 'Delete',
   SHIFT = 'Shift'
@@ -94,47 +95,6 @@ export class UtilityService {
     if (input === null || filter === null) return false;
     const reg = /[_\.\-]/gi;
     return input.toUpperCase().replace(reg, '').includes(filter.toUpperCase().replace(reg, ''));
-  }
-
-
-  mangaFormat(format: MangaFormat): string {
-    switch (format) {
-      case MangaFormat.EPUB:
-        return 'EPUB';
-      case MangaFormat.ARCHIVE:
-        return 'Archive';
-      case MangaFormat.IMAGE:
-        return 'Image';
-      case MangaFormat.PDF:
-        return 'PDF';
-      case MangaFormat.UNKNOWN:
-        return 'Unknown';
-    }
-  }
-
-  mangaFormatIcon(format: MangaFormat): string {
-    switch (format) {
-      case MangaFormat.EPUB:
-        return 'fa-book';
-      case MangaFormat.ARCHIVE:
-        return 'fa-file-archive';
-      case MangaFormat.IMAGE:
-        return 'fa-image';
-      case MangaFormat.PDF:
-        return 'fa-file-pdf';
-      case MangaFormat.UNKNOWN:
-        return 'fa-question';
-    }
-  }
-
-  getLibraryTypeIcon(format: LibraryType) {
-    switch (format) {
-      case LibraryType.Book:
-        return 'fa-book';
-      case LibraryType.Comic:
-      case LibraryType.Manga:
-        return 'fa-book-open';
-    }
   }
 
   isVolume(d: any) {
@@ -237,4 +197,36 @@ export class UtilityService {
                   || document.body.clientHeight;
     return [windowWidth, windowHeight];
   }
+
+  /**
+   * 
+   * @param data An array of objects
+   * @param keySelector A method to fetch a string from the object, which is used to classify the JumpKey
+   * @returns 
+   */
+  getJumpKeys(data :Array<any>, keySelector: (data: any) => string) {
+    const keys: {[key: string]: number} = {};
+    data.forEach(obj => {
+      let ch = keySelector(obj).charAt(0);
+      if (/\d|\#|!|%|@|\(|\)|\^|\*/g.test(ch)) {
+        ch = '#';
+      }
+      if (!keys.hasOwnProperty(ch)) {
+        keys[ch] = 0;
+      }
+      keys[ch] += 1;
+    });
+    return Object.keys(keys).map(k => {
+      return {
+        key: k,
+        size: keys[k],
+        title: k.toUpperCase()
+      }
+    }).sort((a, b) => {
+      if (a.key < b.key) return -1;
+      if (a.key > b.key) return 1;
+      return 0;
+    });
+  }
+
 }

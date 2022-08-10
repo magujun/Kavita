@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormControl, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ConfirmService } from 'src/app/shared/confirm.service';
 import { SettingsService } from '../settings.service';
 import { ServerSettings } from '../_models/server-settings';
 import { catchError, finalize, shareReplay, take, takeWhile } from 'rxjs/operators';
-import { forkJoin, Observable, of } from 'rxjs';
+import { defer, forkJoin, Observable, of } from 'rxjs';
 import { ServerService } from 'src/app/_services/server.service';
 import { Job } from 'src/app/_models/job/job';
 import { UpdateNotificationModalComponent } from 'src/app/shared/update-notification/update-notification-modal.component';
@@ -28,7 +28,7 @@ interface AdhocTask {
 export class ManageTasksSettingsComponent implements OnInit {
 
   serverSettings!: ServerSettings;
-  settingsForm: FormGroup = new FormGroup({});
+  settingsForm: UntypedFormGroup = new UntypedFormGroup({});
   taskFrequencies: Array<string> = [];
   logLevels: Array<string> = [];
 
@@ -55,10 +55,7 @@ export class ManageTasksSettingsComponent implements OnInit {
     {
       name: 'Download Logs', 
       description: 'Compiles all log files into a zip and downloads it',
-      api: this.downloadService.downloadLogs().pipe(
-        takeWhile(val => {
-          return val.state != 'DONE';
-        })), 
+      api: defer(() => of(this.downloadService.download('logs', undefined))), 
       successMessage: ''
     },
     {
@@ -92,8 +89,8 @@ export class ManageTasksSettingsComponent implements OnInit {
       this.taskFrequencies = result.frequencies;
       this.logLevels = result.levels;
       this.serverSettings = result.settings;
-      this.settingsForm.addControl('taskScan', new FormControl(this.serverSettings.taskScan, [Validators.required]));
-      this.settingsForm.addControl('taskBackup', new FormControl(this.serverSettings.taskBackup, [Validators.required]));
+      this.settingsForm.addControl('taskScan', new UntypedFormControl(this.serverSettings.taskScan, [Validators.required]));
+      this.settingsForm.addControl('taskBackup', new UntypedFormControl(this.serverSettings.taskBackup, [Validators.required]));
     });
 
     this.reoccuringTasks$ = this.serverService.getReoccuringJobs().pipe(shareReplay());

@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using API.Data;
 using API.Data.Repositories;
 using API.DTOs;
+using API.DTOs.Filtering;
 using API.Entities.Enums;
 using API.Extensions;
+using API.Helpers;
 using API.SignalR;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -95,9 +97,11 @@ namespace API.Controllers
             existingPreferences.BookReaderLayoutMode = preferencesDto.BookReaderLayoutMode;
             existingPreferences.BookReaderImmersiveMode = preferencesDto.BookReaderImmersiveMode;
             existingPreferences.GlobalPageLayoutMode = preferencesDto.GlobalPageLayoutMode;
+            existingPreferences.BlurUnreadSummaries = preferencesDto.BlurUnreadSummaries;
             existingPreferences.Theme = await _unitOfWork.SiteThemeRepository.GetThemeById(preferencesDto.Theme.Id);
             existingPreferences.LayoutMode = preferencesDto.LayoutMode;
-            
+            existingPreferences.PromptForDownloadSize = preferencesDto.PromptForDownloadSize;
+
             _unitOfWork.UserRepository.Update(existingPreferences);
 
             if (await _unitOfWork.CommitAsync())

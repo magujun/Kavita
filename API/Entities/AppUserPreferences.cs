@@ -93,6 +93,15 @@ namespace API.Entities
         /// </summary>
         /// <remarks>Defaults to Cards</remarks>
         public PageLayoutMode GlobalPageLayoutMode { get; set; } = PageLayoutMode.Cards;
+        /// <summary>
+        /// UI Site Global Setting: If unread summaries should be blurred until expanded or unless user has read it already
+        /// </summary>
+        /// <remarks>Defaults to false</remarks>
+        public bool BlurUnreadSummaries { get; set; } = false;
+        /// <summary>
+        /// UI Site Global Setting: Should Kavita prompt user to confirm downloads that are greater than 100 MB.
+        /// </summary>
+        public bool PromptForDownloadSize { get; set; } = true;
 
         public AppUser AppUser { get; set; }
         public int AppUserId { get; set; }

@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
-import { NavigationStart, Router } from '@angular/router';
+import { ChangeDetectorRef, Injectable } from '@angular/core';
+import { ActivatedRoute, NavigationStart, Router } from '@angular/router';
+import { ReplaySubject } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { Action, ActionFactoryService } from '../_services/action-factory.service';
+import { Action, ActionFactoryService, ActionItem } from '../_services/action-factory.service';
 
 type DataSource = 'volume' | 'chapter' | 'special' | 'series' | 'bookmark';
 
@@ -22,15 +23,27 @@ export class BulkSelectionService {
   private selectedCards: { [key: string]: {[key: number]: boolean} } = {};
   private dataSourceMax: { [key: string]: number} = {};
   public isShiftDown: boolean = false;
+  private activeRoute: string = '';
 
-  constructor(private router: Router, private actionFactory: ActionFactoryService) {
+  private actionsSource = new ReplaySubject<ActionItem<any>[]>(1);
+  public actions$ = this.actionsSource.asObservable();
+
+  private selectionsSource = new ReplaySubject<number>(1);
+  /**
+   * Number of active selections
+   */
+  public selections$ = this.selectionsSource.asObservable();
+
+  constructor(private router: Router, private actionFactory: ActionFactoryService, private route: ActivatedRoute) {
     router.events
       .pipe(filter(event => event instanceof NavigationStart))
       .subscribe((event) => {
         this.deselectAll();
         this.dataSourceMax = {};
         this.prevIndex = 0;
+        this.activeRoute = this.router.url;
       });
+
   }
 
   handleCardSelection(dataSource: DataSource, index: number, maxIndex: number, wasSelected: boolean) {
@@ -61,6 +74,7 @@ export class BulkSelectionService {
     this.prevIndex = index;
     this.prevDataSource = dataSource;
     this.dataSourceMax[dataSource] = maxIndex;
+    this.actionsSource.next(this.getActions(() => {}));
   }
 
   isCardSelected(dataSource: DataSource, index: number) {
@@ -77,6 +91,7 @@ export class BulkSelectionService {
 
     if (from === to) {
       this.selectedCards[dataSource][to] = value;
+      this.selectionsSource.next(this.totalSelections());
       return;
     }
 
@@ -89,10 +104,12 @@ export class BulkSelectionService {
     for (let i = from; i <= to; i++) {
       this.selectedCards[dataSource][i] = value;
     }
+    this.selectionsSource.next(this.totalSelections());
   }
 
   deselectAll() {
     this.selectedCards = {};
+    this.selectionsSource.next(0);
   }
 
   hasSelections() {
@@ -127,9 +144,16 @@ export class BulkSelectionService {
   getActions(callback: (action: Action, data: any) => void) {
     // checks if series is present. If so, returns only series actions
     // else returns volume/chapter items
-    const allowedActions = [Action.AddToReadingList, Action.MarkAsRead, Action.MarkAsUnread, Action.AddToCollection, Action.Delete];
+    const allowedActions = [Action.AddToReadingList, Action.MarkAsRead, Action.MarkAsUnread, Action.AddToCollection, Action.Delete, Action.AddToWantToReadList, Action.RemoveFromWantToReadList];
     if (Object.keys(this.selectedCards).filter(item => item === 'series').length > 0) {
-      return this.actionFactory.getSeriesActions(callback).filter(item => allowedActions.includes(item.action));
+      let actions = this.actionFactory.getSeriesActions(callback).filter(item => allowedActions.includes(item.action));
+      if (this.activeRoute.startsWith('/want-to-read')) {
+        const removeFromWantToRead = {...actions[0]};
+        removeFromWantToRead.action = Action.RemoveFromWantToReadList;
+        removeFromWantToRead.title = 'Remove from Want to Read';
+        actions.push(removeFromWantToRead);
+      }
+      return actions;
     }
 
     if (Object.keys(this.selectedCards).filter(item => item === 'bookmark').length > 0) {

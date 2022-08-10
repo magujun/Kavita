@@ -1,4 +1,4 @@
-<div *ngIf="series !== undefined">
+<div class="modal-container" *ngIf="series !== undefined">
     <div class="modal-header">
         <h4 class="modal-title">
             {{this.series.name}} Details</h4>
@@ -46,7 +46,7 @@
                     <div class="row g-0" *ngIf="metadata">
                         <div class="mb-3" style="width: 100%">
                             <label for="summary" class="form-label">Summary</label>
-                            <div class="input-group {{metadata?.summaryLocked ? 'lock-active' : ''}}">
+                            <div class="input-group {{metadata.summaryLocked ? 'lock-active' : ''}}">
                                 <ng-container [ngTemplateOutlet]="lock" [ngTemplateOutletContext]="{ item: metadata, field: 'summaryLocked' }"></ng-container>
                                 <textarea id="summary" class="form-control" formControlName="summary" rows="4"></textarea>
                             </div>
@@ -341,7 +341,7 @@
                     <h4>Information</h4>
                     <div class="row g-0 mb-2">
                         <div class="col-md-6" *ngIf="libraryName">Library: {{libraryName | sentenceCase}}</div>
-                        <div class="col-md-6">Format: <app-tag-badge>{{utilityService.mangaFormat(series.format)}}</app-tag-badge></div>
+                        <div class="col-md-6">Format: <app-tag-badge>{{series.format | mangaFormat}}</app-tag-badge></div>
                     </div>
                     <div class="row g-0 mb-2">
                         <div class="col-md-6" >Created: {{series.created | date:'shortDate'}}</div>

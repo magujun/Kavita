@@ -33,6 +33,8 @@ export interface Preferences {
     // Global
     theme: SiteTheme;
     globalPageLayoutMode: PageLayoutMode;
+    blurUnreadSummaries: boolean;
+    promptForDownloadSize: boolean;
 }
 
 export const readingDirections = [{text: 'Left to Right', value: ReadingDirection.LeftToRight}, {text: 'Right to Left', value: ReadingDirection.RightToLeft}];

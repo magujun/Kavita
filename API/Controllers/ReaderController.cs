@@ -13,6 +13,7 @@ using API.Extensions;
 using API.Services;
 using API.SignalR;
 using Hangfire;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -28,41 +29,41 @@ namespace API.Controllers
         private readonly ILogger<ReaderController> _logger;
         private readonly IReaderService _readerService;
         private readonly IBookmarkService _bookmarkService;
-        private readonly IEventHub _eventHub;
 
         /// <inheritdoc />
         public ReaderController(ICacheService cacheService,
             IUnitOfWork unitOfWork, ILogger<ReaderController> logger,
-            IReaderService readerService, IBookmarkService bookmarkService,
-            IEventHub eventHub)
+            IReaderService readerService, IBookmarkService bookmarkService)
         {
             _cacheService = cacheService;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _readerService = readerService;
             _bookmarkService = bookmarkService;
-            _eventHub = eventHub;
         }
 
         /// <summary>
         /// Returns the PDF for the chapterId.
         /// </summary>
-        /// <param name="apiKey">API Key for user to validate they have access</param>
         /// <param name="chapterId"></param>
         /// <returns></returns>
         [HttpGet("pdf")]
+        [ResponseCache(Duration = 60 * 10, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetPdf(int chapterId)
         {
-
             var chapter = await _cacheService.Ensure(chapterId);
             if (chapter == null) return BadRequest("There was an issue finding pdf file for reading");
+
+            // Validate the user has access to the PDF
+            var series = await _unitOfWork.SeriesRepository.GetSeriesForChapter(chapter.Id,
+                await _unitOfWork.UserRepository.GetUserIdByUsernameAsync(User.GetUsername()));
+            if (series == null) return BadRequest("Invalid Access");
 
             try
             {
                 var path = _cacheService.GetCachedFile(chapter);
                 if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"Pdf doesn't exist when it should.");
 
-                Response.AddCacheHeader(path, TimeSpan.FromMinutes(60).Seconds);
                 return PhysicalFile(path, "application/pdf", Path.GetFileName(path), true);
             }
             catch (Exception)
@@ -79,6 +80,8 @@ namespace API.Controllers
         /// <param name="page"></param>
         /// <returns></returns>
         [HttpGet("image")]
+        [ResponseCache(Duration = 60 * 10, Location = ResponseCacheLocation.Client, NoStore = false)]
+        [AllowAnonymous]
         public async Task<ActionResult> GetImage(int chapterId, int page)
         {
             if (page < 0) page = 0;
@@ -91,8 +94,7 @@ namespace API.Controllers
                 if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"No such image for page {page}");
                 var format = Path.GetExtension(path).Replace(".", "");
 
-                Response.AddCacheHeader(path, TimeSpan.FromMinutes(10).Seconds);
-                return PhysicalFile(path, "image/" + format, Path.GetFileName(path));
+                return PhysicalFile(path, "image/" + format, Path.GetFileName(path), true);
             }
             catch (Exception)
             {
@@ -110,10 +112,13 @@ namespace API.Controllers
         /// <remarks>We must use api key as bookmarks could be leaked to other users via the API</remarks>
         /// <returns></returns>
         [HttpGet("bookmark-image")]
+        [ResponseCache(Duration = 60 * 10, Location = ResponseCacheLocation.Client, NoStore = false)]
         public async Task<ActionResult> GetBookmarkImage(int seriesId, string apiKey, int page)
         {
             if (page < 0) page = 0;
             var userId = await _unitOfWork.UserRepository.GetUserIdByApiKeyAsync(apiKey);
+
+            // NOTE: I'm not sure why I need this flow here
             var totalPages = await _cacheService.CacheBookmarkForSeries(userId, seriesId);
             if (page > totalPages)
             {
@@ -126,7 +131,6 @@ namespace API.Controllers
                 if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return BadRequest($"No such image for page {page}");
                 var format = Path.GetExtension(path).Replace(".", "");
 
-                Response.AddCacheHeader(path, TimeSpan.FromMinutes(10).Seconds);
                 return PhysicalFile(path, "image/" + format, Path.GetFileName(path));
             }
             catch (Exception)
@@ -152,9 +156,9 @@ namespace API.Controllers
             if (dto == null) return BadRequest("Please perform a scan on this series or library and try again");
             var mangaFile = (await _unitOfWork.ChapterRepository.GetFilesForChapterAsync(chapterId)).First();
 
-            return Ok(new ChapterInfoDto()
+            var info = new ChapterInfoDto()
             {
-                ChapterNumber =  dto.ChapterNumber,
+                ChapterNumber = dto.ChapterNumber,
                 VolumeNumber = dto.VolumeNumber,
                 VolumeId = dto.VolumeId,
                 FileName = Path.GetFileName(mangaFile.FilePath),
@@ -164,8 +168,33 @@ namespace API.Controllers
                 LibraryId = dto.LibraryId,
                 IsSpecial = dto.IsSpecial,
                 Pages = dto.Pages,
-                ChapterTitle = dto.ChapterTitle ?? string.Empty
-            });
+                ChapterTitle = dto.ChapterTitle ?? string.Empty,
+                Subtitle = string.Empty,
+                Title = dto.SeriesName
+            };
+
+            if (info.ChapterTitle is {Length: > 0}) {
+                info.Title += " - " + info.ChapterTitle;
+            }
+
+            if (info.IsSpecial && dto.VolumeNumber.Equals(Parser.Parser.DefaultVolume))
+            {
+                info.Subtitle = info.FileName;
+            } else if (!info.IsSpecial && info.VolumeNumber.Equals(Parser.Parser.DefaultVolume))
+            {
+                info.Subtitle = _readerService.FormatChapterName(info.LibraryType, true, true) + info.ChapterNumber;
+            }
+            else
+            {
+                info.Subtitle = "Volume " + info.VolumeNumber;
+                if (!info.ChapterNumber.Equals(Parser.Parser.DefaultChapter))
+                {
+                    info.Subtitle += " " + _readerService.FormatChapterName(info.LibraryType, true, true) +
+                                     info.ChapterNumber;
+                }
+            }
+
+            return Ok(info);
         }
 
         /// <summary>
@@ -191,6 +220,11 @@ namespace API.Controllers
         }
 
 
+        /// <summary>
+        /// Marks a Series as read. All volumes and chapters will be marked as read during this process.
+        /// </summary>
+        /// <param name="markReadDto"></param>
+        /// <returns></returns>
         [HttpPost("mark-read")]
         public async Task<ActionResult> MarkRead(MarkReadDto markReadDto)
         {
@@ -204,7 +238,7 @@ namespace API.Controllers
 
 
         /// <summary>
-        /// Marks a Series as Unread (progress)
+        /// Marks a Series as Unread. All volumes and chapters will be marked as unread during this process.
         /// </summary>
         /// <param name="markReadDto"></param>
         /// <returns></returns>
@@ -230,7 +264,7 @@ namespace API.Controllers
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Progress);
 
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersAsync(markVolumeReadDto.VolumeId);
-            _readerService.MarkChaptersAsUnread(user, markVolumeReadDto.SeriesId, chapters);
+            await _readerService.MarkChaptersAsUnread(user, markVolumeReadDto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -253,7 +287,7 @@ namespace API.Controllers
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername(), AppUserIncludes.Progress);
 
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersAsync(markVolumeReadDto.VolumeId);
-            _readerService.MarkChaptersAsRead(user, markVolumeReadDto.SeriesId, chapters);
+            await _readerService.MarkChaptersAsRead(user, markVolumeReadDto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -283,7 +317,7 @@ namespace API.Controllers
                 chapterIds.Add(chapterId);
             }
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersByIdsAsync(chapterIds);
-            _readerService.MarkChaptersAsRead(user, dto.SeriesId, chapters);
+            await _readerService.MarkChaptersAsRead(user, dto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -312,7 +346,7 @@ namespace API.Controllers
                 chapterIds.Add(chapterId);
             }
             var chapters = await _unitOfWork.ChapterRepository.GetChaptersByIdsAsync(chapterIds);
-            _readerService.MarkChaptersAsUnread(user, dto.SeriesId, chapters);
+            await _readerService.MarkChaptersAsUnread(user, dto.SeriesId, chapters);
 
             _unitOfWork.UserRepository.Update(user);
 
@@ -338,7 +372,7 @@ namespace API.Controllers
             var volumes = await _unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(dto.SeriesIds.ToArray(), true);
             foreach (var volume in volumes)
             {
-                _readerService.MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
+                await _readerService.MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
             }
 
             _unitOfWork.UserRepository.Update(user);
@@ -365,7 +399,7 @@ namespace API.Controllers
             var volumes = await _unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(dto.SeriesIds.ToArray(), true);
             foreach (var volume in volumes)
             {
-                _readerService.MarkChaptersAsUnread(user, volume.SeriesId, volume.Chapters);
+                await _readerService.MarkChaptersAsUnread(user, volume.SeriesId, volume.Chapters);
             }
 
             _unitOfWork.UserRepository.Update(user);

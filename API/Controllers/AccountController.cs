@@ -70,13 +70,21 @@ namespace API.Controllers
         /// </summary>
         /// <param name="resetPasswordDto"></param>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<ActionResult> UpdatePassword(ResetPasswordDto resetPasswordDto)
         {
+            // TODO: Log this request to Audit Table
             _logger.LogInformation("{UserName} is changing {ResetUser}'s password", User.GetUsername(), resetPasswordDto.UserName);
-            var user = await _userManager.Users.SingleAsync(x => x.UserName == resetPasswordDto.UserName);
 
-            if (resetPasswordDto.UserName != User.GetUsername() && !(User.IsInRole(PolicyConstants.AdminRole) || User.IsInRole(PolicyConstants.ChangePasswordRole)))
+            var user = await _userManager.Users.SingleOrDefaultAsync(x => x.UserName == resetPasswordDto.UserName);
+            if (user == null) return Ok(); // Don't report BadRequest as that would allow brute forcing to find accounts on system
+
+
+            if (resetPasswordDto.UserName == User.GetUsername() && !(User.IsInRole(PolicyConstants.ChangePasswordRole) || User.IsInRole(PolicyConstants.AdminRole)))
+                return Unauthorized("You are not permitted to this operation.");
+
+            if (resetPasswordDto.UserName != User.GetUsername() && !User.IsInRole(PolicyConstants.AdminRole))
                 return Unauthorized("You are not permitted to this operation.");
 
             var errors = await _accountService.ChangeUserPassword(user, resetPasswordDto.Password);
@@ -94,6 +102,7 @@ namespace API.Controllers
         /// </summary>
         /// <param name="registerDto"></param>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<ActionResult<UserDto>> RegisterFirstUser(RegisterDto registerDto)
         {
@@ -143,7 +152,10 @@ namespace API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Something went wrong when registering user");
-                await _unitOfWork.RollbackAsync();
+                // We need to manually delete the User as we've already committed
+                var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(registerDto.Username);
+                _unitOfWork.UserRepository.Delete(user);
+                await _unitOfWork.CommitAsync();
             }
 
             return BadRequest("Something went wrong when registering user");
@@ -155,6 +167,7 @@ namespace API.Controllers
         /// </summary>
         /// <param name="loginDto"></param>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
@@ -173,13 +186,13 @@ namespace API.Controllers
                     "You are missing an email on your account. Please wait while we migrate your account.");
             }
 
-            if (!validPassword)
-            {
-                return Unauthorized("Your credentials are not correct");
-            }
-
             var result = await _signInManager
-                .CheckPasswordSignInAsync(user, loginDto.Password, false);
+                .CheckPasswordSignInAsync(user, loginDto.Password, true);
+
+            if (result.IsLockedOut)
+            {
+                return Unauthorized("You've been locked out from too many authorization attempts. Please wait 10 minutes.");
+            }
 
             if (!result.Succeeded)
             {
@@ -207,6 +220,12 @@ namespace API.Controllers
             return dto;
         }
 
+        /// <summary>
+        /// Refreshes the user's JWT token
+        /// </summary>
+        /// <param name="tokenRequestDto"></param>
+        /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("refresh-token")]
         public async Task<ActionResult<TokenRequestDto>> RefreshToken([FromBody] TokenRequestDto tokenRequestDto)
         {
@@ -343,6 +362,24 @@ namespace API.Controllers
             return BadRequest("There was an exception when updating the user");
         }
 
+        /// <summary>
+        /// Requests the Invite Url for the UserId. Will return error if user is already validated.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="withBaseUrl">Include the "https://ip:port/" in the generated link</param>
+        /// <returns></returns>
+        [Authorize(Policy = "RequireAdminRole")]
+        [HttpGet("invite-url")]
+        public async Task<ActionResult<string>> GetInviteUrl(int userId, bool withBaseUrl)
+        {
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user.EmailConfirmed)
+                return BadRequest("User is already confirmed");
+            if (string.IsNullOrEmpty(user.ConfirmationToken))
+                return BadRequest("Manual setup is unable to be completed. Please cancel and recreate the invite.");
+
+            return GenerateEmailLink(user.ConfirmationToken, "confirm-email", user.Email, withBaseUrl);
+        }
 
 
         /// <summary>
@@ -423,11 +460,9 @@ namespace API.Controllers
                     lib.AppUsers.Add(user);
                 }
 
-                await _unitOfWork.CommitAsync();
-
-
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 if (string.IsNullOrEmpty(token)) return BadRequest("There was an issue sending email");
+
 
                 var emailLink = GenerateEmailLink(token, "confirm-email", dto.Email);
                 _logger.LogCritical("[Invite User]: Email Link for {UserName}: {Link}", user.UserName, emailLink);
@@ -442,6 +477,11 @@ namespace API.Controllers
                         ServerConfirmationLink = emailLink
                     });
                 }
+
+                user.ConfirmationToken = token;
+
+                await _unitOfWork.CommitAsync();
+
                 return Ok(new InviteUserResponse
                 {
                     EmailLink = emailLink,
@@ -457,6 +497,7 @@ namespace API.Controllers
             return BadRequest("There was an error setting up your account. Please check the logs");
         }
 
+        [AllowAnonymous]
         [HttpPost("confirm-email")]
         public async Task<ActionResult<UserDto>> ConfirmEmail(ConfirmEmailDto dto)
         {
@@ -481,6 +522,7 @@ namespace API.Controllers
             if (!await ConfirmEmailToken(dto.Token, user)) return BadRequest("Invalid Email Token");
 
             user.UserName = dto.Username;
+            user.ConfirmationToken = null;
             var errors = await _accountService.ChangeUserPassword(user, dto.Password);
             if (errors.Any())
             {
@@ -612,12 +654,11 @@ namespace API.Controllers
             return Ok(emailLink);
         }
 
-        private string GenerateEmailLink(string token, string routePart, string email)
+        private string GenerateEmailLink(string token, string routePart, string email, bool withHost = true)
         {
             var host = _environment.IsDevelopment() ? "localhost:4200" : Request.Host.ToString();
-            var emailLink =
-                $"{Request.Scheme}://{host}{Request.PathBase}/registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
-            return emailLink;
+            if (withHost) return $"{Request.Scheme}://{host}{Request.PathBase}/registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
+            return $"registration/{routePart}?token={HttpUtility.UrlEncode(token)}&email={HttpUtility.UrlEncode(email)}";
         }
 
         /// <summary>

@@ -22,8 +22,13 @@
 
 // This is responsible for ensuring we scroll down and only tabs and companion bar is visible
 .main-container {
-  // Height set dynamically by getHeight()
+  // Height set dynamically by get ScrollingBlockHeight()
   overflow-y: auto;
   position: relative;
   overscroll-behavior-y: none;
+}
+
+.title, .subtitle-with-actionable {
+  word-break: break-all;
+  margin-bottom: 0;
 }

@@ -1,5 +1,5 @@
-import { Component, ElementRef, Input, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
-import { FormGroup, FormControl } from '@angular/forms';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { UntypedFormGroup, UntypedFormControl } from '@angular/forms';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
 import { CollectionTag } from 'src/app/_models/collection-tag';
@@ -10,7 +10,8 @@ import { CollectionTagService } from 'src/app/_services/collection-tag.service';
   selector: 'app-bulk-add-to-collection',
   templateUrl: './bulk-add-to-collection.component.html',
   encapsulation: ViewEncapsulation.None, // This is needed as per the bootstrap modal documentation to get styles to work.
-  styleUrls: ['./bulk-add-to-collection.component.scss']
+  styleUrls: ['./bulk-add-to-collection.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BulkAddToCollectionComponent implements OnInit {
 
@@ -25,22 +26,27 @@ export class BulkAddToCollectionComponent implements OnInit {
    */
   lists: Array<CollectionTag> = [];
   loading: boolean = false;
-  listForm: FormGroup = new FormGroup({});
+  listForm: UntypedFormGroup = new UntypedFormGroup({});
+
+  collectionTitleTrackby = (index: number, item: CollectionTag) => `${item.title}`;
 
   @ViewChild('title') inputElem!: ElementRef<HTMLInputElement>;
 
 
-  constructor(private modal: NgbActiveModal, private collectionService: CollectionTagService, private toastr: ToastrService) { }
+  constructor(private modal: NgbActiveModal, private collectionService: CollectionTagService, 
+    private toastr: ToastrService, private readonly cdRef: ChangeDetectorRef) { }
 
   ngOnInit(): void {
 
-    this.listForm.addControl('title', new FormControl(this.title, []));
-    this.listForm.addControl('filterQuery', new FormControl('', []));
+    this.listForm.addControl('title', new UntypedFormControl(this.title, []));
+    this.listForm.addControl('filterQuery', new UntypedFormControl('', []));
     
     this.loading = true;
+    this.cdRef.markForCheck();
     this.collectionService.allTags().subscribe(tags => {
       this.lists = tags;
       this.loading = false;
+      this.cdRef.markForCheck();
     });
   }
 
@@ -48,6 +54,7 @@ export class BulkAddToCollectionComponent implements OnInit {
     // Shift focus to input
     if (this.inputElem) {
       this.inputElem.nativeElement.select();
+      this.cdRef.markForCheck();
     }
   }
 

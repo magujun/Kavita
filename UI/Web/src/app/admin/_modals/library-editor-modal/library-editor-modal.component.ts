@@ -1,7 +1,8 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
+import { ConfirmService } from 'src/app/shared/confirm.service';
 import { Library } from 'src/app/_models/library';
 import { LibraryService } from 'src/app/_services/library.service';
 import { SettingsService } from '../../settings.service';
@@ -16,9 +17,9 @@ export class LibraryEditorModalComponent implements OnInit {
 
   @Input() library: Library | undefined = undefined;
 
-  libraryForm: FormGroup = new FormGroup({
-    name: new FormControl('', [Validators.required]),
-    type: new FormControl(0, [Validators.required])
+  libraryForm: UntypedFormGroup = new UntypedFormGroup({
+    name: new UntypedFormControl('', [Validators.required]),
+    type: new UntypedFormControl(0, [Validators.required])
   });
 
   selectedFolders: string[] = [];
@@ -28,7 +29,7 @@ export class LibraryEditorModalComponent implements OnInit {
 
 
   constructor(private modalService: NgbModal, private libraryService: LibraryService, public modal: NgbActiveModal, private settingService: SettingsService,
-    private toastr: ToastrService) { }
+    private toastr: ToastrService, private confirmService: ConfirmService) { }
 
   ngOnInit(): void {
 
@@ -45,7 +46,7 @@ export class LibraryEditorModalComponent implements OnInit {
     this.madeChanges = true;
   }
 
-  submitLibrary() {
+  async submitLibrary() {
     const model = this.libraryForm.value;
     model.folders = this.selectedFolders;
 
@@ -57,6 +58,12 @@ export class LibraryEditorModalComponent implements OnInit {
       model.id = this.library.id;
       model.folders = model.folders.map((item: string) => item.startsWith('\\') ? item.substr(1, item.length) : item);
       model.type = parseInt(model.type, 10);
+
+      if (model.type !== this.library.type) {
+        if (!await this.confirmService.confirm(`Changing library type will trigger a new scan with different parsing rules and may lead to 
+        series being re-created and hence you may loose progress and bookmarks. You should backup before you do this. Are you sure you want to continue?`)) return;
+      }
+
       this.libraryService.update(model).subscribe(() => {
         this.close(true);
       }, err => {

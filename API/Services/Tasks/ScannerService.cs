@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using API.Comparators;
 using API.Data;
 using API.Data.Metadata;
 using API.Data.Repositories;
@@ -69,6 +69,8 @@ public class ScannerService : IScannerService
         _wordCountAnalyzerService = wordCountAnalyzerService;
     }
 
+    [DisableConcurrentExecution(60 * 60 * 60)]
+    [AutomaticRetry(Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
     public async Task ScanSeries(int libraryId, int seriesId, CancellationToken token)
     {
         var sw = new Stopwatch();
@@ -81,6 +83,7 @@ public class ScannerService : IScannerService
         var seriesFolderPaths = (await _unitOfWork.SeriesRepository.GetFilesForSeries(seriesId))
             .Select(f => _directoryService.FileSystem.FileInfo.FromFileName(f.FilePath).Directory.FullName)
             .ToList();
+        var libraryPaths = library.Folders.Select(f => f.Path).ToList();
 
         if (!await CheckMounts(library.Name, seriesFolderPaths))
         {
@@ -88,7 +91,7 @@ public class ScannerService : IScannerService
             return;
         }
 
-        if (!await CheckMounts(library.Name, library.Folders.Select(f => f.Path).ToList()))
+        if (!await CheckMounts(library.Name, libraryPaths))
         {
             _logger.LogCritical("Some of the root folders for library are not accessible. Please check that drives are connected and rescan. Scan will be aborted");
             return;
@@ -98,7 +101,8 @@ public class ScannerService : IScannerService
         var allGenres = await _unitOfWork.GenreRepository.GetAllGenresAsync();
         var allTags = await _unitOfWork.TagRepository.GetAllTagsAsync();
 
-        var seriesDirs = _directoryService.FindHighestDirectoriesFromFiles(seriesFolderPaths, files.Select(f => f.FilePath).ToList());
+        // Shouldn't this be libraryPath?
+        var seriesDirs = _directoryService.FindHighestDirectoriesFromFiles(libraryPaths, files.Select(f => f.FilePath).ToList());
         if (seriesDirs.Keys.Count == 0)
         {
             _logger.LogDebug("Scan Series has files spread outside a main series folder. Defaulting to library folder");
@@ -188,14 +192,15 @@ public class ScannerService : IScannerService
             MessageFactory.ScanSeriesEvent(libraryId, seriesId, series.Name));
         await CleanupDbEntities();
         BackgroundJob.Enqueue(() => _cacheService.CleanupChapters(chapterIds));
-        BackgroundJob.Enqueue(() => _metadataService.RefreshMetadataForSeries(libraryId, series.Id, false));
+        BackgroundJob.Enqueue(() => _directoryService.ClearDirectory(_directoryService.TempDirectory));
+        BackgroundJob.Enqueue(() => _metadataService.GenerateCoversForSeries(libraryId, series.Id, false));
+        BackgroundJob.Enqueue(() => _wordCountAnalyzerService.ScanSeries(libraryId, series.Id, false));
     }
 
     private static void RemoveParsedInfosNotForSeries(Dictionary<ParsedSeries, List<ParserInfo>> parsedSeries, Series series)
     {
         var keys = parsedSeries.Keys;
-        foreach (var key in keys.Where(key =>
-                      series.Format != key.Format || !SeriesHelper.FindSeries(series, key)))
+        foreach (var key in keys.Where(key => !SeriesHelper.FindSeries(series, key))) // series.Format != key.Format ||
         {
             parsedSeries.Remove(key);
         }
@@ -250,7 +255,8 @@ public class ScannerService : IScannerService
         return true;
     }
 
-
+    [DisableConcurrentExecution(60 * 60 * 60)]
+    [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
     public async Task ScanLibraries()
     {
         _logger.LogInformation("Starting Scan of All Libraries");
@@ -269,7 +275,8 @@ public class ScannerService : IScannerService
     /// ie) all entities will be rechecked for new cover images and comicInfo.xml changes
     /// </summary>
     /// <param name="libraryId"></param>
-
+    [DisableConcurrentExecution(60 * 60 * 60)]
+    [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Delete)]
     public async Task ScanLibrary(int libraryId)
     {
         Library library;
@@ -321,8 +328,9 @@ public class ScannerService : IScannerService
 
         await CleanupDbEntities();
 
-        BackgroundJob.Enqueue(() => _metadataService.RefreshMetadata(libraryId, false));
+        BackgroundJob.Enqueue(() => _metadataService.GenerateCoversForLibrary(libraryId, false));
         BackgroundJob.Enqueue(() => _wordCountAnalyzerService.ScanLibrary(libraryId, false));
+        BackgroundJob.Enqueue(() => _directoryService.ClearDirectory(_directoryService.TempDirectory));
     }
 
     private async Task<Tuple<int, long, Dictionary<ParsedSeries, List<ParserInfo>>>> ScanFiles(Library library, IEnumerable<string> dirs)
@@ -797,6 +805,8 @@ public class ScannerService : IScannerService
                 _unitOfWork.VolumeRepository.Add(volume);
             }
 
+            volume.Name = volumeNumber;
+
             _logger.LogDebug("[ScannerService] Parsing {SeriesName} - Volume {VolumeNumber}", series.Name, volume.Name);
             var infos = parsedInfos.Where(p => p.Volumes == volumeNumber).ToArray();
             UpdateChapters(series, volume, infos);
@@ -974,9 +984,6 @@ public class ScannerService : IScannerService
         }
 
 
-
-
-
         if (comicInfo.Year > 0)
         {
             var day = Math.Max(comicInfo.Day, 1);
@@ -984,104 +991,80 @@ public class ScannerService : IScannerService
             chapter.ReleaseDate = DateTime.Parse($"{month}/{day}/{comicInfo.Year}");
         }
 
-        if (!string.IsNullOrEmpty(comicInfo.Colorist))
-        {
-            var people = comicInfo.Colorist.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Colorist);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Colorist,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        var people = GetTagValues(comicInfo.Colorist);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Colorist);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Colorist,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Characters))
-        {
-            var people = comicInfo.Characters.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Character);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Character,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Characters);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Character);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Character,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Translator))
-        {
-            var people = comicInfo.Translator.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Translator);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Translator,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
 
-        if (!string.IsNullOrEmpty(comicInfo.Tags))
-        {
-            var tags = comicInfo.Tags.Split(",").Select(s => s.Trim()).ToList();
-            // Remove all tags that aren't matching between chapter tags and metadata
-            TagHelper.KeepOnlySameTagBetweenLists(chapter.Tags, tags.Select(t => DbFactory.Tag(t, false)).ToList());
-            TagHelper.UpdateTag(allTags, tags, false,
-                (tag, _) =>
-                {
-                    chapter.Tags.Add(tag);
-                });
-        }
+        people = GetTagValues(comicInfo.Translator);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Translator);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Translator,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Writer))
-        {
-            var people = comicInfo.Writer.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Writer);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Writer,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
 
-        if (!string.IsNullOrEmpty(comicInfo.Editor))
-        {
-            var people = comicInfo.Editor.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Editor);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Editor,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Writer);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Writer);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Writer,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Inker))
-        {
-            var people = comicInfo.Inker.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Inker);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Inker,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Editor);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Editor);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Editor,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Letterer))
-        {
-            var people = comicInfo.Letterer.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Letterer);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Letterer,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Inker);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Inker);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Inker,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Penciller))
-        {
-            var people = comicInfo.Penciller.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Penciller);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Penciller,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Letterer);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Letterer);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Letterer,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.CoverArtist))
-        {
-            var people = comicInfo.CoverArtist.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.CoverArtist);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.CoverArtist,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
 
-        if (!string.IsNullOrEmpty(comicInfo.Publisher))
-        {
-            var people = comicInfo.Publisher.Split(",");
-            PersonHelper.RemovePeople(chapter.People, people, PersonRole.Publisher);
-            PersonHelper.UpdatePeople(allPeople, people, PersonRole.Publisher,
-                person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
-        }
+        people = GetTagValues(comicInfo.Penciller);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Penciller);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Penciller,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
 
-        if (!string.IsNullOrEmpty(comicInfo.Genre))
+        people = GetTagValues(comicInfo.CoverArtist);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.CoverArtist);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.CoverArtist,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
+
+        people = GetTagValues(comicInfo.Publisher);
+        PersonHelper.RemovePeople(chapter.People, people, PersonRole.Publisher);
+        PersonHelper.UpdatePeople(allPeople, people, PersonRole.Publisher,
+            person => PersonHelper.AddPersonIfNotExists(chapter.People, person));
+
+        var genres = GetTagValues(comicInfo.Genre);
+        GenreHelper.KeepOnlySameGenreBetweenLists(chapter.Genres, genres.Select(g => DbFactory.Genre(g, false)).ToList());
+        GenreHelper.UpdateGenre(allGenres, genres, false,
+            genre => chapter.Genres.Add(genre));
+
+        var tags = GetTagValues(comicInfo.Tags);
+        TagHelper.KeepOnlySameTagBetweenLists(chapter.Tags, tags.Select(t => DbFactory.Tag(t, false)).ToList());
+        TagHelper.UpdateTag(allTags, tags, false,
+            (tag, _) =>
+            {
+                chapter.Tags.Add(tag);
+            });
+    }
+
+    private static IList<string> GetTagValues(string comicInfoTagSeparatedByComma)
+    {
+
+        if (!string.IsNullOrEmpty(comicInfoTagSeparatedByComma))
         {
-            var genres = comicInfo.Genre.Split(",");
-            GenreHelper.KeepOnlySameGenreBetweenLists(chapter.Genres, genres.Select(g => DbFactory.Genre(g, false)).ToList());
-            GenreHelper.UpdateGenre(allGenres, genres, false,
-                genre => chapter.Genres.Add(genre));
+            return comicInfoTagSeparatedByComma.Split(",").Select(s => s.Trim()).ToList();
         }
+        return ImmutableList<string>.Empty;
     }
 }

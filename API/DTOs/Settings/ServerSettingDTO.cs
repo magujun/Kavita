@@ -1,4 +1,5 @@
-﻿using API.Services;
+﻿using System.Collections.Generic;
+using API.Services;
 
 namespace API.DTOs.Settings
 {
@@ -38,11 +39,21 @@ namespace API.DTOs.Settings
         /// <remarks>If null or empty string, will default back to default install setting aka <see cref="EmailService.DefaultApiUrl"/></remarks>
         public string EmailServiceUrl { get; set; }
         public string InstallVersion { get; set; }
+        /// <summary>
+        /// Represents a unique Id to this Kavita installation. Only used in Stats to identify unique installs.
+        /// </summary>
+        public string InstallId { get; set; }
 
         public bool ConvertBookmarkToWebP { get; set; }
         /// <summary>
         /// If the Swagger UI Should be exposed. Does not require authentication, but does require a JWT.
         /// </summary>
         public bool EnableSwaggerUi { get; set; }
+
+        /// <summary>
+        /// The amount of Backups before cleanup
+        /// </summary>
+        /// <remarks>Value should be between 1 and 30</remarks>
+        public int TotalBackups { get; set; } = 30;
     }
 }

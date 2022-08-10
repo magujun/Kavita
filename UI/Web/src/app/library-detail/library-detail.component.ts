@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -24,7 +24,8 @@ import { SeriesRemovedEvent } from '../_models/events/series-removed-event';
 @Component({
   selector: 'app-library-detail',
   templateUrl: './library-detail.component.html',
-  styleUrls: ['./library-detail.component.scss']
+  styleUrls: ['./library-detail.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LibraryDetailComponent implements OnInit, OnDestroy {
 
@@ -56,32 +57,46 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
 
     switch (action) {
       case Action.AddToReadingList:
-        this.actionService.addMultipleSeriesToReadingList(selectedSeries, () => {
+        this.actionService.addMultipleSeriesToReadingList(selectedSeries, (success) => {
+          if (success) this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
+        });
+        break;
+      case Action.AddToWantToReadList:
+        this.actionService.addMultipleSeriesToWantToReadList(selectedSeries.map(s => s.id), () => {
           this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
+        });
+        break;
+      case Action.RemoveFromWantToReadList:
+        this.actionService.removeMultipleSeriesFromWantToReadList(selectedSeries.map(s => s.id), () => {
+          this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.AddToCollection:
-        this.actionService.addMultipleSeriesToCollectionTag(selectedSeries, () => {
-          this.bulkSelectionService.deselectAll();
+        this.actionService.addMultipleSeriesToCollectionTag(selectedSeries, (success) => {
+          if (success) this.bulkSelectionService.deselectAll();
+          this.cdRef.markForCheck();
         });
         break;
       case Action.MarkAsRead:
         this.actionService.markMultipleSeriesAsRead(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
         });
         
         break;
       case Action.MarkAsUnread:
         this.actionService.markMultipleSeriesAsUnread(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
         });
         break;
       case Action.Delete:
         this.actionService.deleteMultipleSeries(selectedSeries, () => {
-          this.loadPage();
           this.bulkSelectionService.deselectAll();
+          this.loadPage();
         });
         break;
     }
@@ -90,7 +105,8 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
   constructor(private route: ActivatedRoute, private router: Router, private seriesService: SeriesService, 
     private libraryService: LibraryService, private titleService: Title, private actionFactoryService: ActionFactoryService, 
     private actionService: ActionService, public bulkSelectionService: BulkSelectionService, private hubService: MessageHubService,
-    private utilityService: UtilityService, public navService: NavService, private filterUtilityService: FilterUtilitiesService) {
+    private utilityService: UtilityService, public navService: NavService, private filterUtilityService: FilterUtilitiesService,
+    private readonly cdRef: ChangeDetectorRef) {
     const routeId = this.route.snapshot.paramMap.get('libraryId');
     if (routeId === null) {
       this.router.navigateByUrl('/libraries');
@@ -103,16 +119,17 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     this.libraryService.getLibraryNames().pipe(take(1)).subscribe(names => {
       this.libraryName = names[this.libraryId];
       this.titleService.setTitle('Kavita - ' + this.libraryName);
+      this.cdRef.markForCheck();
     });
 
     this.libraryService.getJumpBar(this.libraryId).subscribe(barDetails => {
-      //console.log('JumpBar: ', barDetails);
       this.jumpKeys = barDetails;
+      this.cdRef.markForCheck();
     });
+
     this.actions = this.actionFactoryService.getLibraryActions(this.handleAction.bind(this));
     
     this.pagination = this.filterUtilityService.pagination(this.route.snapshot);
-    this.pagination.itemsPerPage = 0; // TODO: Validate what pagination setting is ideal
     [this.filterSettings.presets, this.filterSettings.openByDefault] = this.filterUtilityService.filterPresetsFromUrl(this.route.snapshot);
     if (this.filterSettings.presets) this.filterSettings.presets.libraries = [this.libraryId];
     // Setup filterActiveCheck to check filter against
@@ -120,6 +137,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     this.filterActiveCheck.libraries = [this.libraryId];
 
     this.filterSettings.libraryDisabled = true;
+    this.cdRef.markForCheck();
   }
 
   ngOnInit(): void {
@@ -185,44 +203,25 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     this.loadPage();
   }
 
-  handlePaginationChange(direction: 0 | 1) {
-    this.filterUtilityService.updateUrlFromFilter(this.pagination, undefined);
-    this.loadPage(direction);
-  }
-
-  loadPage(direction: 0 | 1 = 1) {
+  loadPage() {
     // The filter is out of sync with the presets from typeaheads on first load but syncs afterwards
     if (this.filter == undefined) {
       this.filter = this.seriesService.createSeriesFilter();
       this.filter.libraries.push(this.libraryId);
+      this.cdRef.markForCheck();
     }
 
     this.loadingSeries = true;
     this.filterActive = !this.utilityService.deepEqual(this.filter, this.filterActiveCheck);
-    this.seriesService.getSeriesForLibrary(0, this.pagination?.currentPage, this.pagination?.itemsPerPage, this.filter).pipe(take(1)).subscribe(series => {
-      this.series = series.result;
-      
-      // For Pagination
-      // if (this.series.length === 0) {
-      //   this.series = series.result;
-      // } else {
-      //   if (direction === 1) {
-      //     //this.series = [...this.series, ...series.result];
-      //     this.series.concat(series.result);
-      //   } else {
-      //     this.series = [...series.result, ...this.series];
-      //   }
-      // }
-      
+    this.cdRef.markForCheck();
+    
+    this.seriesService.getSeriesForLibrary(0, undefined, undefined, this.filter).pipe(take(1)).subscribe(series => {
+      this.series = series.result; 
       this.pagination = series.pagination;
       this.loadingSeries = false;
+      this.cdRef.markForCheck();
       window.scrollTo(0, 0);
     });
-  }
-
-  onPageChange(pagination: Pagination) {
-    this.filterUtilityService.updateUrlFromFilter(this.pagination, undefined);
-    this.loadPage();
   }
 
   seriesClicked(series: Series) {
