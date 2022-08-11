@@ -148,10 +148,6 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
    * @see canvasImage
    */
   canvasImageNext = new Image();
-    /**
-   *    *    * Used solely for LayoutMode.Double rendering. Will always hold the next image in buffer.
-   */
-  canvasImageNextDouble = new Image();
   /**
    * Responsible to hold current page + 2. Used to know if we should render 
    * @remarks Used solely for LayoutMode.DoubleReverse rendering. 
@@ -1021,6 +1017,8 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const notInSplit = this.currentImageSplitPart !== (this.isSplitLeftToRight() ? SPLIT_PAGE_PART.LEFT_PART : SPLIT_PAGE_PART.RIGHT_PART);
     if ((this.pageNum + pageAmount >= this.maxPages && notInSplit) || this.isLoading) {
+
+
       if (this.isLoading) { return; }
 
       // Move to next volume/chapter automatically
