@@ -36,8 +36,8 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
   jumpbarKeys: Array<JumpKey> = [];
 
   bulkActionCallback = (action: Action, data: any) => {
-    const selectedSeriesIndexies = this.bulkSelectionService.getSelectedCardsForSource('series');
-    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexies.includes(index + ''));
+    const selectedSeriesIndexes = this.bulkSelectionService.getSelectedCardsForSource('series');
+    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexes.includes(index + ''));
 
     switch (action) {
       case Action.AddToReadingList:

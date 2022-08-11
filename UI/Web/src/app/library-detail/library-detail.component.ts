@@ -46,14 +46,14 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
 
   tabs: Array<{title: string, fragment: string, icon: string}> = [
     {title: 'Library', fragment: '', icon: 'fa-landmark'},
-    {title: 'Recommended', fragment: 'recomended', icon: 'fa-award'},
+    {title: 'Recommended', fragment: 'recommended', icon: 'fa-award'},
   ];
   active = this.tabs[0];
 
 
   bulkActionCallback = (action: Action, data: any) => {
-    const selectedSeriesIndexies = this.bulkSelectionService.getSelectedCardsForSource('series');
-    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexies.includes(index + ''));
+    const selectedSeriesIndexes = this.bulkSelectionService.getSelectedCardsForSource('series');
+    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexes.includes(index + ''));
 
     switch (action) {
       case Action.AddToReadingList:

@@ -36,9 +36,6 @@ export class CollectionDetailComponent implements OnInit, OnDestroy, AfterConten
   @ViewChild('scrollingBlock') scrollingBlock: ElementRef<HTMLDivElement> | undefined;
   @ViewChild('companionBar') companionBar: ElementRef<HTMLDivElement> | undefined;
 
-  @ViewChild('scrollingBlock') scrollingBlock: ElementRef<HTMLDivElement> | undefined;
-  @ViewChild('companionBar') companionBar: ElementRef<HTMLDivElement> | undefined;
-
   collectionTag!: CollectionTag;
   tagImage: string = '';
   isLoading: boolean = true;
