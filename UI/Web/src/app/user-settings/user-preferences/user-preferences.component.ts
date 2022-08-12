@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { map, shareReplay, take, takeUntil } from 'rxjs/operators';
 import { Title } from '@angular/platform-browser';
@@ -129,15 +129,19 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
       this.settingsForm.addControl('bookReaderThemeName', new UntypedFormControl(this.user?.preferences.bookReaderThemeName || bookColorThemes[0].name, []));
       this.settingsForm.addControl('bookReaderImmersiveMode', new UntypedFormControl(this.user?.preferences.bookReaderImmersiveMode, []));
 
-      this.settingsForm.addControl('theme', new UntypedFormControl(this.user.preferences.theme, []));
-      this.settingsForm.addControl('globalPageLayoutMode', new UntypedFormControl(this.user.preferences.globalPageLayoutMode, []));
-      this.settingsForm.addControl('blurUnreadSummaries', new UntypedFormControl(this.user.preferences.blurUnreadSummaries, []));
-      this.settingsForm.addControl('promptForDownloadSize', new UntypedFormControl(this.user.preferences.promptForDownloadSize, []));
+      this.settingsForm.addControl('theme', new FormControl(this.user.preferences.theme, []));
+      this.settingsForm.addControl('globalPageLayoutMode', new FormControl(this.user.preferences.globalPageLayoutMode, []));
+      this.settingsForm.addControl('blurUnreadSummaries', new FormControl(this.user.preferences.blurUnreadSummaries, []));
+      this.settingsForm.addControl('promptForDownloadSize', new FormControl(this.user.preferences.promptForDownloadSize, []));
+
       this.cdRef.markForCheck();
     });
 
-    this.passwordChangeForm.addControl('password', new UntypedFormControl('', [Validators.required]));
-    this.passwordChangeForm.addControl('confirmPassword', new UntypedFormControl('', [Validators.required]));
+    this.passwordChangeForm.addControl('password', new FormControl('', [Validators.required]));
+    this.passwordChangeForm.addControl('confirmPassword', new FormControl('', [Validators.required]));
+    this.passwordChangeForm.addControl('oldPassword', new FormControl('', [Validators.required]));
+
+    
 
     this.observableHandles.push(this.passwordChangeForm.valueChanges.subscribe(() => {
       const values = this.passwordChangeForm.value;
@@ -189,6 +193,7 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
   resetPasswordForm() {
     this.passwordChangeForm.get('password')?.setValue('');
     this.passwordChangeForm.get('confirmPassword')?.setValue('');
+    this.passwordChangeForm.get('oldPassword')?.setValue('');
     this.resetPasswordErrors = [];
     this.cdRef.markForCheck();
   }
@@ -235,7 +240,7 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
 
     const model = this.passwordChangeForm.value;
     this.resetPasswordErrors = [];
-    this.observableHandles.push(this.accountService.resetPassword(this.user?.username, model.confirmPassword).subscribe(() => {
+    this.observableHandles.push(this.accountService.resetPassword(this.user?.username, model.confirmPassword, model.oldPassword).subscribe(() => {
       this.toastr.success('Password has been updated');
       this.resetPasswordForm();
     }, err => {
