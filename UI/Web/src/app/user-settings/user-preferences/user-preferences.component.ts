@@ -36,8 +36,8 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
   bookColorThemes = bookColorThemes;
   pageLayoutModes = pageLayoutModes;
 
-  settingsForm: UntypedFormGroup = new UntypedFormGroup({});
-  passwordChangeForm: UntypedFormGroup = new UntypedFormGroup({});
+  settingsForm: FormGroup = new FormGroup({});
+  passwordChangeForm: FormGroup = new FormGroup({});
   user: User | undefined = undefined;
   hasChangePasswordAbility: Observable<boolean> = of(false);
 
@@ -112,22 +112,22 @@ export class UserPreferencesComponent implements OnInit, OnDestroy {
         this.user.preferences.bookReaderFontFamily = 'default';
       }
 
-      this.settingsForm.addControl('readingDirection', new UntypedFormControl(this.user.preferences.readingDirection, []));
-      this.settingsForm.addControl('scalingOption', new UntypedFormControl(this.user.preferences.scalingOption, []));
-      this.settingsForm.addControl('pageSplitOption', new UntypedFormControl(this.user.preferences.pageSplitOption, []));
-      this.settingsForm.addControl('autoCloseMenu', new UntypedFormControl(this.user.preferences.autoCloseMenu, []));
-      this.settingsForm.addControl('showScreenHints', new UntypedFormControl(this.user.preferences.showScreenHints, []));
-      this.settingsForm.addControl('readerMode', new UntypedFormControl(this.user.preferences.readerMode, []));
-      this.settingsForm.addControl('layoutMode', new UntypedFormControl(this.user.preferences.layoutMode, []));
-      this.settingsForm.addControl('bookReaderFontFamily', new UntypedFormControl(this.user.preferences.bookReaderFontFamily, []));
-      this.settingsForm.addControl('bookReaderFontSize', new UntypedFormControl(this.user.preferences.bookReaderFontSize, []));
-      this.settingsForm.addControl('bookReaderLineSpacing', new UntypedFormControl(this.user.preferences.bookReaderLineSpacing, []));
-      this.settingsForm.addControl('bookReaderMargin', new UntypedFormControl(this.user.preferences.bookReaderMargin, []));
-      this.settingsForm.addControl('bookReaderReadingDirection', new UntypedFormControl(this.user.preferences.bookReaderReadingDirection, []));
-      this.settingsForm.addControl('bookReaderTapToPaginate', new UntypedFormControl(!!this.user.preferences.bookReaderTapToPaginate, []));
-      this.settingsForm.addControl('bookReaderLayoutMode', new UntypedFormControl(this.user.preferences.bookReaderLayoutMode || BookPageLayoutMode.Default, []));
-      this.settingsForm.addControl('bookReaderThemeName', new UntypedFormControl(this.user?.preferences.bookReaderThemeName || bookColorThemes[0].name, []));
-      this.settingsForm.addControl('bookReaderImmersiveMode', new UntypedFormControl(this.user?.preferences.bookReaderImmersiveMode, []));
+      this.settingsForm.addControl('readingDirection', new FormControl(this.user.preferences.readingDirection, []));
+      this.settingsForm.addControl('scalingOption', new FormControl(this.user.preferences.scalingOption, []));
+      this.settingsForm.addControl('pageSplitOption', new FormControl(this.user.preferences.pageSplitOption, []));
+      this.settingsForm.addControl('autoCloseMenu', new FormControl(this.user.preferences.autoCloseMenu, []));
+      this.settingsForm.addControl('showScreenHints', new FormControl(this.user.preferences.showScreenHints, []));
+      this.settingsForm.addControl('readerMode', new FormControl(this.user.preferences.readerMode, []));
+      this.settingsForm.addControl('layoutMode', new FormControl(this.user.preferences.layoutMode, []));
+      this.settingsForm.addControl('bookReaderFontFamily', new FormControl(this.user.preferences.bookReaderFontFamily, []));
+      this.settingsForm.addControl('bookReaderFontSize', new FormControl(this.user.preferences.bookReaderFontSize, []));
+      this.settingsForm.addControl('bookReaderLineSpacing', new FormControl(this.user.preferences.bookReaderLineSpacing, []));
+      this.settingsForm.addControl('bookReaderMargin', new FormControl(this.user.preferences.bookReaderMargin, []));
+      this.settingsForm.addControl('bookReaderReadingDirection', new FormControl(this.user.preferences.bookReaderReadingDirection, []));
+      this.settingsForm.addControl('bookReaderTapToPaginate', new FormControl(!!this.user.preferences.bookReaderTapToPaginate, []));
+      this.settingsForm.addControl('bookReaderLayoutMode', new FormControl(this.user.preferences.bookReaderLayoutMode || BookPageLayoutMode.Default, []));
+      this.settingsForm.addControl('bookReaderThemeName', new FormControl(this.user?.preferences.bookReaderThemeName || bookColorThemes[0].name, []));
+      this.settingsForm.addControl('bookReaderImmersiveMode', new FormControl(this.user?.preferences.bookReaderImmersiveMode, []));
 
       this.settingsForm.addControl('theme', new FormControl(this.user.preferences.theme, []));
       this.settingsForm.addControl('globalPageLayoutMode', new FormControl(this.user.preferences.globalPageLayoutMode, []));
