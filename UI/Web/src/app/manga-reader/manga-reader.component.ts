@@ -373,10 +373,12 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   get SplitIconClass() {
     if (this.isSplitLeftToRight()) {
       return 'left-side';
+    } else if (this.isSplitRightToLeft()) {
+      return 'right-side';
     } else if (this.isNoSplit()) {
       return 'none';
     }
-    return 'right-side';
+    return 'fit';
   }
 
   get LayoutModeIconClass() {
@@ -485,12 +487,12 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         pageSplitOption: this.pageSplitOption,
         fittingOption: this.translateScalingOption(this.scalingOption),
         layoutMode: this.layoutMode,
-        darkness: 100
+        dimming: 100
       });
 
       this.updateForm();
 
-      this.generalSettingsForm.get('darkness')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
+      this.generalSettingsForm.get('dimming')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
         console.log('brightness: ', val);
         //this.cdRef.markForCheck();
       });
@@ -915,6 +917,10 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isSplitLeftToRight() {
     return parseInt(this.generalSettingsForm?.get('pageSplitOption')?.value, 10) === PageSplitOption.SplitLeftToRight;
+  }
+
+  isSplitRightToLeft() {
+    return parseInt(this.generalSettingsForm?.get('pageSplitOption')?.value, 10) === PageSplitOption.SplitRightToLeft;
   }
 
   /**
