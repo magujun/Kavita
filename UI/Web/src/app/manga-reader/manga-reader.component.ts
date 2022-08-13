@@ -392,6 +392,17 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  get LayoutModeIconClass() {
+    switch (this.layoutMode) {
+      case LayoutMode.Single:
+        return 'none';
+      case LayoutMode.Double:
+        return 'double';
+      case LayoutMode.DoubleReversed:
+        return 'double-reversed';
+    }
+  }
+
   get ReaderModeIcon() {
     switch(this.readerMode) {
       case ReaderMode.LeftRight:
