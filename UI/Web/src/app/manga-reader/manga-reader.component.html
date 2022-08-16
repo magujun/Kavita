@@ -34,10 +34,10 @@
     </ng-container>
 
     <div (touchstart)="onSwipe($event, 'start')" (touchend)="onSwipe($event, 'end')">
-        <div (click)="toggleMenu()" class="reading-area" 
-                [ngStyle]="{'background-color': backgroundColor, 'height': readerMode === ReaderMode.Webtoon ? 'inherit' : 'calc(var(--vh)*100)'}" #readingArea>
+        <div (click)="toggleMenu()" class="reading-area" [ngStyle]="{'background-color': backgroundColor, 'height': readerMode === ReaderMode.Webtoon ? 'inherit' : 'calc(var(--vh)*100)'}" #readingArea>
+            
             <ng-container *ngIf="readerMode !== ReaderMode.Webtoon; else webtoon">
-                <div class="image-container" [ngClass]="{'d-none': !renderWithCanvas }" [style.filter]="'brightness(' + generalSettingsForm.get('dimming')?.value + '%)'">
+                <div class="image-container" [ngClass]="{'d-none': !renderWithCanvas }" [style.filter]="'brightness(' + generalSettingsForm.get('darkness')?.value + '%)'">
                     <canvas #content class="{{getFittingOptionClass()}}"
                         ondragstart="return false;" onselectstart="return false;">
                     </canvas>
@@ -67,7 +67,7 @@
                         'fit-to-width-double-offset' : FittingOption === FITTING_OPTION.WIDTH && ShouldRenderDoublePage,
                         'fit-to-height-double-offset': FittingOption === FITTING_OPTION.HEIGHT && ShouldRenderDoublePage,
                         'original-double-offset' : FittingOption === FITTING_OPTION.ORIGINAL && ShouldRenderDoublePage}"
-                        [style.filter]="'brightness(' + generalSettingsForm.get('dimming')?.value + '%)' | safeStyle">
+                        [style.filter]="'brightness(' + generalSettingsForm.get('darkness')?.value + '%)' | safeStyle">
                     <img #image [src]="canvasImage.src" id="image-1"
                         class="{{getFittingOptionClass()}} {{readerMode === ReaderMode.LeftRight || readerMode === ReaderMode.UpDown ? '' : 'd-none'}} {{showClickOverlay ? 'blur' : ''}}">
 
@@ -75,56 +75,53 @@
                         <img [src]="canvasImage2.src" id="image-2" class="image-2 {{getFittingOptionClass()}} {{readerMode === ReaderMode.LeftRight || readerMode === ReaderMode.UpDown ? '' : 'd-none'}} {{showClickOverlay ? 'blur' : ''}}"> <!--  {{ShouldRenderReverseDouble ? 'reverse' : ''}} -->
                     </ng-container>
                 </div>
+
             </ng-container>
+
+            <ng-template #webtoon>
+                <div class="webtoon-images" *ngIf="readerMode === ReaderMode.Webtoon && !isLoading && !inSetup">
+                    <app-infinite-scroller [pageNum]="pageNum"
+                    [bufferPages]="5"
+                    [goToPage]="goToPageEvent"
+                    (pageNumberChange)="handleWebtoonPageChange($event)"
+                    [totalPages]="maxPages"
+                    [urlProvider]="getPageUrl"
+                    (loadNextChapter)="loadNextChapter()"
+                    (loadPrevChapter)="loadPrevChapter()"
+                    [bookmarkPage]="showBookmarkEffectEvent"
+                    [fullscreenToggled]="fullscreenEvent"></app-infinite-scroller>
+                </div>
+            </ng-template>
+
         </div>
-
-        <ng-template #webtoon>
-            <div class="webtoon-images" *ngIf="readerMode === ReaderMode.Webtoon && !isLoading && !inSetup">
-                <app-infinite-scroller [pageNum]="pageNum"
-                [bufferPages]="5"
-                [goToPage]="goToPageEvent"
-                (pageNumberChange)="handleWebtoonPageChange($event)"
-                [totalPages]="maxPages"
-                [urlProvider]="getPageUrl"
-                (loadNextChapter)="loadNextChapter()"
-                (loadPrevChapter)="loadPrevChapter()"
-                [bookmarkPage]="showBookmarkEffectEvent"
-                [fullscreenToggled]="fullscreenEvent"></app-infinite-scroller>
-            </div>
-        </ng-template>
-
     </div>
 
     <div class="fixed-bottom overlay" *ngIf="menuOpen" [@slideFromBottom]="menuOpen">
         <div class="mb-1" *ngIf="pageOptions != undefined && pageOptions.ceil != undefined">
             <span class="visually-hidden" id="slider-info"></span>
-            <div class="row pb-1 ms-2 me-2 align-items-center justify-content-center text-center">
+            <div class="row align-items-center justify-content-center text-center">
 
-                <div class="col-1"> </div>
+                <button class="col-1 btn btn-sm btn-icon" [disabled]="prevChapterDisabled" (click)="loadPrevChapter();resetMenuCloseTimer();" title="Prev Chapter/Volume"><i class="fa fa-fast-backward" aria-hidden="true"></i></button>
 
-                <button class="col-1 btn btn-small btn-icon" [disabled]="prevChapterDisabled" (click)="loadPrevChapter();resetMenuCloseTimer();" title="Prev Chapter/Volume"><i class="fa fa-fast-backward" aria-hidden="true"></i></button>
-
-                <button class="col-1 btn btn-small btn-icon" [disabled]="prevPageDisabled || pageNum === 0" (click)="goToPage(0);resetMenuCloseTimer();" title="First Page"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
+                <button class="col-1 btn btn-sm btn-icon" [disabled]="prevPageDisabled || pageNum === 0" (click)="goToPage(0);resetMenuCloseTimer();" title="First Page"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
 
                 <div class="col-5 custom-slider" *ngIf="pageOptions.ceil > 0; else noSlider">
                     <ngx-slider [options]="pageOptions" [value]="pageNum" aria-describedby="slider-info" [manualRefresh]="refreshSlider" (userChangeEnd)="sliderPageUpdate($event);startMenuCloseTimer()" (userChange)="sliderDragUpdate($event)" (userChangeStart)="cancelMenuCloseTimer();"></ngx-slider>
                 </div>
 
                 <ng-template #noSlider>
-                    <div class="col-5 custom-slider">
+                    <div class="col-auto custom-slider">
                         <ngx-slider [options]="pageOptions" [value]="pageNum" aria-describedby="slider-info" (userChangeEnd)="startMenuCloseTimer()" (userChangeStart)="cancelMenuCloseTimer();"></ngx-slider>
                     </div>
                 </ng-template>
 
-                <button class="col-1 btn btn-small btn-icon" [disabled]="nextPageDisabled || pageNum >= maxPages - 1" (click)="goToPage(this.maxPages);resetMenuCloseTimer();" title="Last Page"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
+                <button class="col-1 btn btn-sm btn-icon" [disabled]="nextPageDisabled || pageNum >= maxPages - 1" (click)="goToPage(this.maxPages);resetMenuCloseTimer();" title="Last Page"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
 
-                <button class="col-1 btn btn-small btn-icon" [disabled]="nextChapterDisabled" (click)="loadNextChapter();resetMenuCloseTimer();" title="Next Chapter/Volume"><i class="fa fa-fast-forward" aria-hidden="true"></i></button>
-
-                <div class="col-1"> </div>
+                <button class="col-1 btn btn-sm btn-icon" [disabled]="nextChapterDisabled" (click)="loadNextChapter();resetMenuCloseTimer();" title="Next Chapter/Volume"><i class="fa fa-fast-forward" aria-hidden="true"></i></button>
 
             </div>
         </div>
-        <div class="row pb-1 ms-2 me-2 align-items-center justify-content-center text-center">
+        <div class="row pb-1 ms-1 me-1 align-items-start justify-content-center text-center">
             <div class="col-2">
                 <button class="btn btn-icon" (click)="setReadingDirection();resetMenuCloseTimer();" [disabled]="readerMode === ReaderMode.Webtoon || readerMode === ReaderMode.UpDown" aria-describedby="reading-direction" title="Reading Direction: {{readingDirection === ReadingDirection.LeftToRight ? 'Left to Right' : 'Right to Left'}}">
                     <i class="fa fa-angle-double-{{readingDirection === ReadingDirection.LeftToRight ? 'right' : 'left'}}" aria-hidden="true"></i>
@@ -150,10 +147,8 @@
                 </button>
             </div>
             <div class="col-2">
-                <div class="form-check form-switch text-start">
-                    <input type="checkbox" id="auto-close" formControlName="autoCloseMenu" class="form-check-input" [value]="true" aria-labelledby="auto-close-label">
-                    <label class="form-check-label text-nowrap" for="auto-close">Auto Close </label>
-                </div>
+                <input type="checkbox" id="auto-close" formControlName="autoCloseMenu" class="btn btn-sm btn-check" [value]="true" aria-labelledby="auto-close-label" autocomplete="off"/>
+                <label id="auto-close-label" class="btn btn-sm btn-outline-secondary" for="auto-close"><i class="fa fa-thumbtack"></i></label>
             </div>
         </div>
         <div class="bottom-menu" *ngIf="settingsOpen && generalSettingsForm">
