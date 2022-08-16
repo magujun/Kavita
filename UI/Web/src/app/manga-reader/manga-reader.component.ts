@@ -1595,9 +1595,17 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     ];
   }
 
-  onSwipe(e: TouchEvent, when: string) {
+  onSwipe(e: TouchEvent, when: 'start'| 'end') {
+    if (this.readerMode === ReaderMode.Webtoon) return;
     const swipeDir = swipe(e, when);
-    if (swipeDir) this.handlePageChange(e, swipeDir);
+    if (!swipeDir) return;
+    if (this.readerMode === ReaderMode.UpDown 
+      && (swipeDir === 'right' || swipeDir === 'left')) 
+      return;
+    else if (this.readerMode === ReaderMode.LeftRight 
+      && (swipeDir === 'up' || swipeDir === 'down')) 
+      return;
+    this.handlePageChange(e, swipeDir);
   }
 
 }
