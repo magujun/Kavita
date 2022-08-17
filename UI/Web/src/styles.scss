@@ -105,3 +105,9 @@ app-root {
   border-radius: 0.25em;
   min-height: 50px;
 }
+
+body {
+  margin-top: 4rem; 
+  height: calc(var(--vh)*100 - 4rem);
+  font-size: 0.75rem;
+}

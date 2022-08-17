@@ -40,9 +40,9 @@ export class NavService {
    * Shows the top nav bar. This should be visible on all pages except the reader.
    */
   showNavBar() {
-    this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '4rem');
-    this.renderer.setStyle(this.document.querySelector('body'), 'height', 'calc(var(--vh)*100 - 4rem)');
-    this.renderer.setStyle(this.document.querySelector('html'), 'height', 'calc(var(--vh)*100)');
+    // this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '4rem');
+    // this.renderer.setStyle(this.document.querySelector('body'), 'height', 'calc(var(--vh)*100 - 4rem)');
+    // this.renderer.setStyle(this.document.querySelector('html'), 'height', 'calc(var(--vh)*100)');
     this.navbarVisibleSource.next(true);
   }
 
@@ -50,9 +50,9 @@ export class NavService {
    * Hides the top nav bar. 
    */
   hideNavBar() {
-    this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '0px');
-    this.renderer.removeStyle(this.document.querySelector('body'), 'height');
-    this.renderer.removeStyle(this.document.querySelector('html'), 'height');
+    // this.renderer.setStyle(this.document.querySelector('body'), 'margin-top', '0px');
+    // this.renderer.removeStyle(this.document.querySelector('body'), 'height');
+    // this.renderer.removeStyle(this.document.querySelector('html'), 'height');
     this.navbarVisibleSource.next(false);
   }
 
