@@ -956,7 +956,7 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  handlePageChange(event: any, direction: string) {
+  handlePageChange(event: any, direction: 'right' | 'left' | 'up' | 'down') {
     if (this.readerMode === ReaderMode.Webtoon) {
       if (direction === 'right') {
         this.nextPage(event);
@@ -965,9 +965,9 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
-    if (direction === 'right') {
+    if (direction === 'right' || direction === 'down') {
       this.readingDirection === ReadingDirection.LeftToRight ? this.nextPage(event) : this.prevPage(event);
-    } else if (direction === 'left') {
+    } else if (direction === 'left' || direction === 'up') {
       this.readingDirection === ReadingDirection.LeftToRight ? this.prevPage(event) : this.nextPage(event);
     }
   }
