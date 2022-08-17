@@ -525,6 +525,9 @@ namespace API.Data.Migrations
                     b.Property<int>("ChapterId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FilePath")
                         .HasColumnType("TEXT");
 
