@@ -354,7 +354,7 @@ namespace API.Controllers
                     lib.AppUsers.Remove(user);
                 }
 
-                libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries)).ToList();
+                libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries, LibraryIncludes.AppUser)).ToList();
             }
 
             foreach (var lib in libraries)
@@ -458,11 +458,11 @@ namespace API.Controllers
                 {
                     _logger.LogInformation("{UserName} is being registered as admin. Granting access to all libraries",
                         user.UserName);
-                    libraries = (await _unitOfWork.LibraryRepository.GetLibrariesAsync()).ToList();
+                    libraries = (await _unitOfWork.LibraryRepository.GetLibrariesAsync(LibraryIncludes.AppUser)).ToList();
                 }
                 else
                 {
-                    libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries)).ToList();
+                    libraries = (await _unitOfWork.LibraryRepository.GetLibraryForIdsAsync(dto.Libraries, LibraryIncludes.AppUser)).ToList();
                 }
 
                 foreach (var lib in libraries)
@@ -481,12 +481,15 @@ namespace API.Controllers
                 var accessible = await _emailService.CheckIfAccessible(host);
                 if (accessible)
                 {
-                    await _emailService.SendConfirmationEmail(new ConfirmationEmailDto()
+                    try
                     {
-                        EmailAddress = dto.Email,
-                        InvitingUser = adminUser.UserName,
-                        ServerConfirmationLink = emailLink
-                    });
+                        await _emailService.SendConfirmationEmail(new ConfirmationEmailDto()
+                        {
+                            EmailAddress = dto.Email,
+                            InvitingUser = adminUser.UserName,
+                            ServerConfirmationLink = emailLink
+                        });
+                    } catch(Exception) {/* Swallow exception */}
                 }
 
                 user.ConfirmationToken = token;

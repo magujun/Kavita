@@ -782,10 +782,16 @@ namespace API.Data.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FolderPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Format")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastChapterAdded")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastFolderScanned")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("LastModified")
