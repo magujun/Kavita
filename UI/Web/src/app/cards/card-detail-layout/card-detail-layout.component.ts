@@ -1,8 +1,8 @@
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { DOCUMENT } from '@angular/common';
-import { AfterContentInit, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, HostListener, Inject, Input, OnChanges, OnDestroy, OnInit, Output, TemplateRef, TrackByFunction, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, HostListener, Inject, Input, OnChanges, OnDestroy, OnInit, Output, TemplateRef, TrackByFunction, ViewChild } from '@angular/core';
 import { VirtualScrollerComponent } from '@iharbeck/ngx-virtual-scroller';
-import { first, Subject, takeUntil, takeWhile } from 'rxjs';
+import { Subject } from 'rxjs';
 import { FilterSettings } from 'src/app/metadata-filter/filter-settings';
 import { Breakpoint, UtilityService } from 'src/app/shared/_services/utility.service';
 import { JumpKey } from 'src/app/_models/jumpbar/jump-key';
@@ -66,7 +66,7 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
   updateApplied: number = 0;
   hasResumedJumpKey: boolean = false;
 
-  private onDestory: Subject<void> = new Subject();
+  private onDestroy: Subject<void> = new Subject();
 
   get Breakpoint() {
     return Breakpoint;
@@ -77,6 +77,7 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
     private jumpbarService: JumpbarService) {
     this.filter = this.seriesService.createSeriesFilter();
     this.changeDetectionRef.markForCheck();
+
   }
 
   @HostListener('window:resize', ['$event'])
@@ -108,11 +109,12 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
         this.virtualScroller.refresh();
       });
     }
+
   }
 
   ngAfterViewInit(): void {
-    // NOTE: I can't seem to figure out a way to resume the JumpKey with the scroller. 
-    // this.virtualScroller.vsUpdate.pipe(takeWhile(() => this.hasResumedJumpKey), takeUntil(this.onDestory)).subscribe(() => {
+    // NOTE: I can't seem to figure out a way to resume the JumpKey with the scroller.
+    // this.virtualScroller.vsUpdate.pipe(takeWhile(() => this.hasResumedJumpKey), takeUntil(this.onDestroy)).subscribe(() => {
     //   const resumeKey = this.jumpbarService.getResumeKey(this.header);
     //   console.log('Resume key:', resumeKey);
     //   if (resumeKey !== '') {
@@ -130,13 +132,12 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
   ngOnChanges(): void {
     this.jumpBarKeysToRender = [...this.jumpBarKeys];
     this.resizeJumpBar();
-    
   }
 
 
   ngOnDestroy() {
-    this.onDestory.next();
-    this.onDestory.complete();
+    this.onDestroy.next();
+    this.onDestroy.complete();
   }
 
   performAction(action: ActionItem<any>) {
