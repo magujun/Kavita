@@ -80,8 +80,6 @@ export class GroupedTypeaheadComponent implements OnInit, OnDestroy {
     return !(this.noResultsTemplate != undefined && !this.groupedData.persons.length && !this.groupedData.collections.length 
       && !this.groupedData.series.length && !this.groupedData.persons.length && !this.groupedData.tags.length && !this.groupedData.genres.length && !this.groupedData.libraries.length
       && !this.groupedData.files.length && !this.groupedData.chapters.length);
-
-    //return this.groupedData.persons.length || this.groupedData.collections.length || this.groupedData.series.length || this.groupedData.persons.length || this.groupedData.tags.length || this.groupedData.genres.length;
   }
 
 

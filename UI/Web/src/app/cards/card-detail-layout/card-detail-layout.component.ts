@@ -66,7 +66,7 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
   updateApplied: number = 0;
   hasResumedJumpKey: boolean = false;
 
-  private onDestory: Subject<void> = new Subject();
+  private onDestroy: Subject<void> = new Subject();
 
   get Breakpoint() {
     return Breakpoint;
@@ -114,7 +114,7 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
 
   ngAfterViewInit(): void {
     // NOTE: I can't seem to figure out a way to resume the JumpKey with the scroller.
-    // this.virtualScroller.vsUpdate.pipe(takeWhile(() => this.hasResumedJumpKey), takeUntil(this.onDestory)).subscribe(() => {
+    // this.virtualScroller.vsUpdate.pipe(takeWhile(() => this.hasResumedJumpKey), takeUntil(this.onDestroy)).subscribe(() => {
     //   const resumeKey = this.jumpbarService.getResumeKey(this.header);
     //   console.log('Resume key:', resumeKey);
     //   if (resumeKey !== '') {
@@ -136,8 +136,8 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
 
 
   ngOnDestroy() {
-    this.onDestory.next();
-    this.onDestory.complete();
+    this.onDestroy.next();
+    this.onDestroy.complete();
   }
 
   performAction(action: ActionItem<any>) {

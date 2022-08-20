@@ -5,7 +5,7 @@ import { debounceTime, take, takeUntil } from 'rxjs/operators';
 import { User } from '../_models/user';
 import { AccountService } from '../_services/account.service';
 import { ReaderService } from '../_services/reader.service';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, UntypedFormGroup } from '@angular/forms';
 import { NavService } from '../_services/nav.service';
 import { ReadingDirection } from '../_models/preferences/reading-direction';
 import { ScalingOption } from '../_models/preferences/scaling-option';
@@ -107,7 +107,7 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   maxPages = 1;
   user!: User;
-  generalSettingsForm!: FormGroup;
+  generalSettingsForm!: UntypedFormGroup;
 
   scalingOptions = scalingOptions;
   readingDirection = ReadingDirection.LeftToRight;
@@ -122,7 +122,11 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   pageSplitOptions = pageSplitOptions;
   layoutModes = layoutModes;
 
-  isLoading = true;
+  isLoading = true; 
+
+  pageAmount = 0;
+
+  isLoose = false;
 
   private ctx!: CanvasRenderingContext2D;
   /**
@@ -370,11 +374,14 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   get SplitIconClass() {
     if (this.isSplitLeftToRight()) {
       return 'left-side';
+    } else if (this.isSplitRightToLeft()) {
+      return 'right-side';
     } else if (this.isNoSplit()) {
       return 'none';
     }
-    return 'right-side';
+    return 'fit';
   }
+
 
   get LayoutModeIconClass() {
     switch (this.layoutMode) {
@@ -482,10 +489,15 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         pageSplitOption: this.pageSplitOption,
         fittingOption: this.translateScalingOption(this.scalingOption),
         layoutMode: this.layoutMode,
-        darkness: 100
+        dimming: 100
       });
 
       this.updateForm();
+
+      this.generalSettingsForm.get('dimming')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
+        console.log('brightness: ', val);
+        //this.cdRef.markForCheck();
+      });
 
       this.generalSettingsForm.get('layoutMode')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
 
@@ -909,6 +921,10 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return parseInt(this.generalSettingsForm?.get('pageSplitOption')?.value, 10) === PageSplitOption.SplitLeftToRight;
   }
 
+  isSplitRightToLeft() {
+    return parseInt(this.generalSettingsForm?.get('pageSplitOption')?.value, 10) === PageSplitOption.SplitRightToLeft;
+  }
+
   /**
    *
    * @returns If the current model reflects no split of fit split
@@ -1009,6 +1025,7 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const notInSplit = this.currentImageSplitPart !== (this.isSplitLeftToRight() ? SPLIT_PAGE_PART.LEFT_PART : SPLIT_PAGE_PART.RIGHT_PART);
     if ((this.pageNum + pageAmount >= this.maxPages && notInSplit) || this.isLoading) {
+
 
       if (this.isLoading) { return; }
 

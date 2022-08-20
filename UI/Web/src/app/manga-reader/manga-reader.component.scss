@@ -17,6 +17,34 @@ img {
     }
 } 
 
+@media(max-width: 600px) {
+  .col-1 {
+    width: 16%;
+  }
+  .col-2 {
+    width: 20%;
+  }
+  .input-group>:not(:last-child) {
+    border: none !important;
+    width: 3.3rem !important;
+    border-top-right-radius: 0.25rem !important;
+    border-top-left-radius: 0.25rem !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+  .input-group>:not(:first-child) {
+    border: none !important;
+    width: 3rem !important;
+    padding: 0.25rem 0.25rem !important;
+    border-top-right-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-right-radius: 0.25rem !important;
+    border-bottom-left-radius: 0.25rem !important;
+    margin-left: 0 !important;
+  }
+} 
+
+
 .reading-area {
   position: relative;
   overflow: auto;
@@ -91,6 +119,10 @@ img {
     z-index: 1;
 }
 
+.input-group>* {
+  border: none !important;
+}
+
 .title, .subtitle {
     text-overflow: ellipsis;
     overflow: hidden;
@@ -99,6 +131,28 @@ img {
 
 .bottom-menu {
     padding: 0.75rem 0.75rem;
+}
+
+.fixed-bottom {
+  font-size: 0.75rem !important;
+  padding: 0.5rem 0.5rem;
+}
+
+.custom-slider {
+  flex-wrap: nowrap;
+}
+
+.btn-icon {
+  width: 2em;
+  height: 2em;
+  text-align: center;
+  padding: 0.25rem;
+  border-radius: 2rem !important;
+  border: none;
+}
+
+.btn-outline-secondary {
+  border: none;
 }
 
 .overlay {
@@ -171,6 +225,8 @@ button.bottom-menu {
   border: none !important;
 }
 
+
+// Splitting Icon
 .form-control:focus {
   box-shadow: none;
 }
@@ -182,6 +238,7 @@ button.bottom-menu {
   top: 0;
   position: absolute;
   background-color: rgba(0, 0, 0, 0.4);
+
     /* Control the left side */
     &.left-side {
         width: 50%;
