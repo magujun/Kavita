@@ -5,7 +5,7 @@ import { debounceTime, take, takeUntil } from 'rxjs/operators';
 import { User } from '../_models/user';
 import { AccountService } from '../_services/account.service';
 import { ReaderService } from '../_services/reader.service';
-import { FormBuilder, UntypedFormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup } from '@angular/forms';
 import { NavService } from '../_services/nav.service';
 import { ReadingDirection } from '../_models/preferences/reading-direction';
 import { ScalingOption } from '../_models/preferences/scaling-option';
@@ -106,7 +106,7 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   maxPages = 1;
   user!: User;
-  generalSettingsForm!: UntypedFormGroup;
+  generalSettingsForm!: FormGroup;
 
   scalingOptions = scalingOptions;
   readingDirection = ReadingDirection.LeftToRight;
@@ -492,11 +492,6 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       });
 
       this.updateForm();
-
-      this.generalSettingsForm.get('dimming')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
-        console.log('brightness: ', val);
-        //this.cdRef.markForCheck();
-      });
 
       this.generalSettingsForm.get('layoutMode')?.valueChanges.pipe(takeUntil(this.onDestroy)).subscribe(val => {
 
@@ -1025,7 +1020,6 @@ export class MangaReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const notInSplit = this.currentImageSplitPart !== (this.isSplitLeftToRight() ? SPLIT_PAGE_PART.LEFT_PART : SPLIT_PAGE_PART.RIGHT_PART);
     if ((this.pageNum + pageAmount >= this.maxPages && notInSplit) || this.isLoading) {
-
 
       if (this.isLoading) { return; }
 
