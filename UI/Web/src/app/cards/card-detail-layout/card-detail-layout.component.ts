@@ -131,7 +131,7 @@ export class CardDetailLayoutComponent implements OnInit, OnDestroy, OnChanges, 
 
   ngOnChanges(): void {
     this.jumpBarKeysToRender = [...this.jumpBarKeys];
-    this.resizeJumpBar();
+    // this.resizeJumpBar(); // Disabled because creates discrepancies with other components
   }
 
 

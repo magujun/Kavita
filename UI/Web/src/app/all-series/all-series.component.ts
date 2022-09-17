@@ -33,7 +33,7 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
   filterOpen: EventEmitter<boolean> = new EventEmitter();
   filterActiveCheck!: SeriesFilter;
   filterActive: boolean = false;
-  jumpbarKeys: Array<JumpKey> = [];
+  jumpBarKeys: Array<JumpKey> = [];
 
   bulkActionCallback = (action: Action, data: any) => {
     const selectedSeriesIndexes = this.bulkSelectionService.getSelectedCardsForSource('series');
@@ -145,7 +145,7 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
         }
         keys[ch] += 1;
       });
-      this.jumpbarKeys = Object.keys(keys).map(k => {
+      this.jumpBarKeys = Object.keys(keys).map(k => {
         return {
           key: k,
           size: keys[k],

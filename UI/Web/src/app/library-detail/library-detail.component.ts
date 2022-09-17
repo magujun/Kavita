@@ -43,7 +43,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
   filterActiveCheck!: SeriesFilter;
   refresh: EventEmitter<void> = new EventEmitter();
 
-  jumpKeys: Array<JumpKey> = [];
+  jumpBarKeys: Array<JumpKey> = [];
 
   tabs: Array<{title: string, fragment: string, icon: string}> = [
     {title: 'Library', fragment: '', icon: 'fa-landmark'},
@@ -124,7 +124,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     });
 
     this.libraryService.getJumpBar(this.libraryId).subscribe(barDetails => {
-      this.jumpKeys = barDetails;
+      this.jumpBarKeys = barDetails;
       this.cdRef.markForCheck();
     });
 
