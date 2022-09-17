@@ -10,6 +10,8 @@
 .companion-bar-content {
     margin-left: 16rem;
     width: auto;
+    margin-top: 4rem;
+    height: calc(var(--vh)*100 - 4rem);
 }
 
 @media (max-width: 576px) {

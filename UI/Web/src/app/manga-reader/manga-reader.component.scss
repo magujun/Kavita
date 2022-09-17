@@ -4,12 +4,6 @@ $side-width: 25%;
 $dash-width: 3px;
 $pointer-offset: 5px;
 
-body {
-  margin-top: 0.5rem; 
-  margin-bottom: 0.5rem;
-  height: calc(var(--vh)*100);
-}
-
 img {
   user-select: none;
 }

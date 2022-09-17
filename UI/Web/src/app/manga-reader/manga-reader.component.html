@@ -97,23 +97,17 @@
         <div class="mb-1" *ngIf="pageOptions != undefined && pageOptions.ceil != undefined">
             <span class="visually-hidden" id="slider-info"></span>
             <div class="row align-items-center justify-content-center text-center">
-
                 <button class="col-1 btn btn-sm btn-icon" [disabled]="prevChapterDisabled" (click)="loadPrevChapter();resetMenuCloseTimer();" title="Prev Chapter/Volume"><i class="fa fa-fast-backward" aria-hidden="true"></i></button>
-
                 <button class="col-1 btn btn-sm btn-icon" [disabled]="prevPageDisabled || pageNum === 0" (click)="goToPage(0);resetMenuCloseTimer();" title="First Page"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
-
                 <div class="col-5 custom-slider" *ngIf="pageOptions.ceil > 0; else noSlider">
                     <ngx-slider [options]="pageOptions" [value]="pageNum" aria-describedby="slider-info" [manualRefresh]="refreshSlider" (userChangeEnd)="sliderPageUpdate($event);startMenuCloseTimer()" (userChange)="sliderDragUpdate($event)" (userChangeStart)="cancelMenuCloseTimer();"></ngx-slider>
                 </div>
-
                 <ng-template #noSlider>
                     <div class="col-auto custom-slider">
                         <ngx-slider [options]="pageOptions" [value]="pageNum" aria-describedby="slider-info" (userChangeEnd)="startMenuCloseTimer()" (userChangeStart)="cancelMenuCloseTimer();"></ngx-slider>
                     </div>
                 </ng-template>
-
                 <button class="col-1 btn btn-sm btn-icon" [disabled]="nextPageDisabled || pageNum >= maxPages - 1" (click)="goToPage(this.maxPages);resetMenuCloseTimer();" title="Last Page"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
-
                 <button class="col-1 btn btn-sm btn-icon" [disabled]="nextChapterDisabled" (click)="loadNextChapter();resetMenuCloseTimer();" title="Next Chapter/Volume"><i class="fa fa-fast-forward" aria-hidden="true"></i></button>
 
             </div>
