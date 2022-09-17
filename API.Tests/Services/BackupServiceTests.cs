@@ -135,19 +135,11 @@ public class BackupServiceTests
         filesystem.AddFile($"{LogDirectory}kavita1.log", new MockFileData(""));
 
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
-        var inMemorySettings = new Dictionary<string, string> {
-            {"Logging:File:Path", "config/logs/kavita.log"},
-            {"Logging:File:MaxRollingFiles", "0"},
-        };
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(inMemorySettings)
-            .Build();
+        var backupService = new BackupService(_logger, _unitOfWork, ds, _messageHub);
 
-        var backupService = new BackupService(_logger, _unitOfWork, ds, configuration, _messageHub);
-
-        var backupLogFiles = backupService.GetLogFiles(0, LogDirectory).ToList();
+        var backupLogFiles = backupService.GetLogFiles(false).ToList();
         Assert.Single(backupLogFiles);
-        Assert.Equal(API.Parser.Parser.NormalizePath($"{LogDirectory}kavita.log"), API.Parser.Parser.NormalizePath(backupLogFiles.First()));
+        Assert.Equal(API.Services.Tasks.Scanner.Parser.Parser.NormalizePath($"{LogDirectory}kavita.log"), API.Services.Tasks.Scanner.Parser.Parser.NormalizePath(backupLogFiles.First()));
     }
 
     [Fact]
@@ -155,21 +147,13 @@ public class BackupServiceTests
     {
         var filesystem = CreateFileSystem();
         filesystem.AddFile($"{LogDirectory}kavita.log", new MockFileData(""));
-        filesystem.AddFile($"{LogDirectory}kavita1.log", new MockFileData(""));
+        filesystem.AddFile($"{LogDirectory}kavita20200213.log", new MockFileData(""));
 
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
-        var inMemorySettings = new Dictionary<string, string> {
-            {"Logging:File:Path", "config/logs/kavita.log"},
-            {"Logging:File:MaxRollingFiles", "1"},
-        };
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(inMemorySettings)
-            .Build();
+        var backupService = new BackupService(_logger, _unitOfWork, ds, _messageHub);
 
-        var backupService = new BackupService(_logger, _unitOfWork, ds, configuration, _messageHub);
-
-        var backupLogFiles = backupService.GetLogFiles(1, LogDirectory).Select(API.Parser.Parser.NormalizePath).ToList();
-        Assert.NotEmpty(backupLogFiles.Where(file => file.Equals(API.Parser.Parser.NormalizePath($"{LogDirectory}kavita.log")) || file.Equals(API.Parser.Parser.NormalizePath($"{LogDirectory}kavita1.log"))));
+        var backupLogFiles = backupService.GetLogFiles().Select(API.Services.Tasks.Scanner.Parser.Parser.NormalizePath).ToList();
+        Assert.NotEmpty(backupLogFiles.Where(file => file.Equals(API.Services.Tasks.Scanner.Parser.Parser.NormalizePath($"{LogDirectory}kavita.log")) || file.Equals(API.Services.Tasks.Scanner.Parser.Parser.NormalizePath($"{LogDirectory}kavita1.log"))));
     }
 
 

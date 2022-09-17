@@ -14,12 +14,11 @@
             </div>
 
             <div style="margin-left: auto; padding-right: 3%;">
-                <button class="btn btn-icon btn-small" title="Shortcuts" (click)="openShortcutModal()">
+                <button class="btn btn-icon btn-sm" title="Shortcuts" (click)="openShortcutModal()">
                     <i class="fa-regular fa-rectangle-list" aria-hidden="true"></i>
                     <span class="visually-hidden">Keyboard Shortcuts Modal</span>
                 </button>
-
-                <button *ngIf="!bookmarkMode" class="btn btn-icon btn-small" role="checkbox" [attr.aria-checked]="CurrentPageBookmarked"
+                <button *ngIf="!bookmarkMode && hasBookmarkRights" class="btn btn-icon btn-sm" role="checkbox" [attr.aria-checked]="CurrentPageBookmarked"
                         title="{{CurrentPageBookmarked ? 'Unbookmark Page' : 'Bookmark Page'}}" (click)="bookmarkPage()">
                     <i class="{{CurrentPageBookmarked ? 'fa' : 'far'}} fa-bookmark" aria-hidden="true"></i>
                     <span class="visually-hidden">{{CurrentPageBookmarked ? 'Unbookmark Page' : 'Bookmark Page'}}</span>
@@ -34,10 +33,10 @@
     </ng-container>
 
     <div (touchstart)="onSwipe($event, 'start')" (touchend)="onSwipe($event, 'end')">
-        <div (click)="toggleMenu()" class="reading-area" [ngStyle]="{'background-color': backgroundColor, 'height': readerMode === ReaderMode.Webtoon ? 'inherit' : 'calc(var(--vh)*100)'}" #readingArea>
+        <div class="reading-area" [ngStyle]="{'background-color': backgroundColor, 'height': readerMode === ReaderMode.Webtoon ? 'inherit' : 'calc(var(--vh)*100)'}" #readingArea>
             
             <ng-container *ngIf="readerMode !== ReaderMode.Webtoon; else webtoon">
-                <div class="image-container" [ngClass]="{'d-none': !renderWithCanvas }" [style.filter]="'brightness(' + generalSettingsForm.get('darkness')?.value + '%)'">
+                <div class="image-container" [ngClass]="{'d-none': !renderWithCanvas }" [style.filter]="'brightness(' + generalSettingsForm.get('dimming')?.value + '%)'">
                     <canvas #content class="{{getFittingOptionClass()}}"
                         ondragstart="return false;" onselectstart="return false;">
                     </canvas>
@@ -62,12 +61,11 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="image-container {{getFittingOptionClass()}}" [ngClass]="{'d-none': renderWithCanvas, 'center-double': ShouldRenderDoublePage,
                         'fit-to-width-double-offset' : FittingOption === FITTING_OPTION.WIDTH && ShouldRenderDoublePage,
                         'fit-to-height-double-offset': FittingOption === FITTING_OPTION.HEIGHT && ShouldRenderDoublePage,
                         'original-double-offset' : FittingOption === FITTING_OPTION.ORIGINAL && ShouldRenderDoublePage}"
-                        [style.filter]="'brightness(' + generalSettingsForm.get('darkness')?.value + '%)' | safeStyle">
+                        [style.filter]="'brightness(' + generalSettingsForm.get('dimming')?.value + '%)' | safeStyle">
                     <img #image [src]="canvasImage.src" id="image-1"
                         class="{{getFittingOptionClass()}} {{readerMode === ReaderMode.LeftRight || readerMode === ReaderMode.UpDown ? '' : 'd-none'}} {{showClickOverlay ? 'blur' : ''}}">
 
@@ -75,7 +73,6 @@
                         <img [src]="canvasImage2.src" id="image-2" class="image-2 {{getFittingOptionClass()}} {{readerMode === ReaderMode.LeftRight || readerMode === ReaderMode.UpDown ? '' : 'd-none'}} {{showClickOverlay ? 'blur' : ''}}"> <!--  {{ShouldRenderReverseDouble ? 'reverse' : ''}} -->
                     </ng-container>
                 </div>
-
             </ng-container>
 
             <ng-template #webtoon>
@@ -219,10 +216,9 @@
                 </div>
                 <div class="row mb-2">
                     <div class="col-md-6 col-sm-12">
-                        <label for="darkness" class="form-label range-label">Darkess</label>
+                        <label for="darkness" class="form-label range-label">Brightness</label><span class="ms-1 range-text">{{generalSettingsForm.get('darkness')?.value + '%'}}</span>
                         <input type="range" class="form-range" id="darkness" 
                                 min="10" max="100" step="1" formControlName="darkness">
-                        <span class="range-text">{{generalSettingsForm.get('darkness')?.value + '%'}}</span>
                     </div>
                 </div>
             </form>

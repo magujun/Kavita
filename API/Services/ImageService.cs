@@ -63,7 +63,7 @@ public class ImageService : IImageService
         else
         {
             _directoryService.CopyDirectoryToDirectory(Path.GetDirectoryName(fileFilePath), targetDirectory,
-                Parser.Parser.ImageFileExtensions);
+                Tasks.Scanner.Parser.Parser.ImageFileExtensions);
         }
     }
 
@@ -128,7 +128,7 @@ public class ImageService : IImageService
 
             return true;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             /* Swallow Exception */
         }

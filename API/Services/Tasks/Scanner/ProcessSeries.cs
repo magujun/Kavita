@@ -79,33 +79,53 @@ public class ProcessSeries : IProcessSeries
     {
         if (!parsedInfos.Any()) return;
 
+        var seriesAdded = false;
         var scanWatch = Stopwatch.StartNew();
         var seriesName = parsedInfos.First().Series;
-        await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress, MessageFactory.LibraryScanProgressEvent(library.Name, ProgressEventType.Updated, seriesName));
+        await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
+            MessageFactory.LibraryScanProgressEvent(library.Name, ProgressEventType.Updated, seriesName));
         _logger.LogInformation("[ScannerService] Beginning series update on {SeriesName}", seriesName);
 
         // Check if there is a Series
-        var seriesAdded = false;
-        var series = await _unitOfWork.SeriesRepository.GetFullSeriesByName(parsedInfos.First().Series, library.Id);
+        var firstInfo = parsedInfos.First();
+        Series series;
+        try
+        {
+            series =
+                await _unitOfWork.SeriesRepository.GetFullSeriesByAnyName(firstInfo.Series, firstInfo.LocalizedSeries,
+                    library.Id, firstInfo.Format);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "There was an exception finding existing series for {SeriesName} with Localized name of {LocalizedName} for library {LibraryId}. This indicates you have duplicate series with same name or localized name in the library. Correct this and rescan", firstInfo.Series, firstInfo.LocalizedSeries, library.Id);
+            await _eventHub.SendMessageAsync(MessageFactory.Error,
+                MessageFactory.ErrorEvent($"There was an exception finding existing series for {firstInfo.Series} with Localized name of {firstInfo.LocalizedSeries} for library {library.Id}",
+                    "This indicates you have duplicate series with same name or localized name in the library. Correct this and rescan."));
+            return;
+        }
+
         if (series == null)
         {
             seriesAdded = true;
-            series = DbFactory.Series(parsedInfos.First().Series);
+            series = DbFactory.Series(firstInfo.Series, firstInfo.LocalizedSeries);
         }
+
         if (series.LibraryId == 0) series.LibraryId = library.Id;
 
         try
         {
             _logger.LogInformation("[ScannerService] Processing series {SeriesName}", series.OriginalName);
 
+            var firstParsedInfo = parsedInfos[0];
+
             UpdateVolumes(series, parsedInfos);
             series.Pages = series.Volumes.Sum(v => v.Pages);
 
             series.NormalizedName = Parser.Parser.Normalize(series.Name);
-            series.OriginalName ??= parsedInfos[0].Series;
+            series.OriginalName ??= firstParsedInfo.Series;
             if (series.Format == MangaFormat.Unknown)
             {
-                series.Format = parsedInfos[0].Format;
+                series.Format = firstParsedInfo.Format;
             }
 
             if (string.IsNullOrEmpty(series.SortName))
@@ -115,9 +135,9 @@ public class ProcessSeries : IProcessSeries
             if (!series.SortNameLocked)
             {
                 series.SortName = series.Name;
-                if (!string.IsNullOrEmpty(parsedInfos[0].SeriesSort))
+                if (!string.IsNullOrEmpty(firstParsedInfo.SeriesSort))
                 {
-                    series.SortName = parsedInfos[0].SeriesSort;
+                    series.SortName = firstParsedInfo.SeriesSort;
                 }
             }
 
@@ -126,41 +146,41 @@ public class ProcessSeries : IProcessSeries
             if (!series.LocalizedNameLocked && !string.IsNullOrEmpty(localizedSeries))
             {
                 series.LocalizedName = localizedSeries;
+                series.NormalizedLocalizedName = Parser.Parser.Normalize(series.LocalizedName);
             }
 
-            // Update series FolderPath here (TODO: Move this into it's own private method)
-            var seriesDirs = _directoryService.FindHighestDirectoriesFromFiles(library.Folders.Select(l => l.Path), parsedInfos.Select(f => f.FullFilePath).ToList());
-            if (seriesDirs.Keys.Count == 0)
-            {
-                _logger.LogCritical("Scan Series has files spread outside a main series folder. This has negative performance effects. Please ensure all series are in a folder");
-            }
-            else
-            {
-                // Don't save FolderPath if it's a library Folder
-                if (!library.Folders.Select(f => f.Path).Contains(seriesDirs.Keys.First()))
-                {
-                    series.FolderPath = Parser.Parser.NormalizePath(seriesDirs.Keys.First());
-                }
-            }
-
-            series.Metadata ??= DbFactory.SeriesMetadata(new List<CollectionTag>());
             UpdateSeriesMetadata(series, library.Type);
+
+            // Update series FolderPath here
+            await UpdateSeriesFolderPath(parsedInfos, library, series);
 
             series.LastFolderScanned = DateTime.Now;
             _unitOfWork.SeriesRepository.Attach(series);
 
-            try
+            if (_unitOfWork.HasChanges())
             {
-                await _unitOfWork.CommitAsync();
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackAsync();
-                _logger.LogCritical(ex, "[ScannerService] There was an issue writing to the for series {@SeriesName}", series);
+                try
+                {
+                    await _unitOfWork.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackAsync();
+                    _logger.LogCritical(ex, "[ScannerService] There was an issue writing to the for series {@SeriesName}", series);
 
-                await _eventHub.SendMessageAsync(MessageFactory.Error,
-                    MessageFactory.ErrorEvent($"There was an issue writing to the DB for Series {series}",
-                        string.Empty));
+                    await _eventHub.SendMessageAsync(MessageFactory.Error,
+                        MessageFactory.ErrorEvent($"There was an issue writing to the DB for Series {series}",
+                            ex.Message));
+                    return;
+                }
+
+                if (seriesAdded)
+                {
+                    await _eventHub.SendMessageAsync(MessageFactory.SeriesAdded,
+                        MessageFactory.SeriesAddedEvent(series.Id, series.Name, series.LibraryId), false);
+                }
+
+                _logger.LogInformation("[ScannerService] Finished series update on {SeriesName} in {Milliseconds} ms", seriesName, scanWatch.ElapsedMilliseconds);
             }
         }
         catch (Exception ex)
@@ -168,24 +188,41 @@ public class ProcessSeries : IProcessSeries
             _logger.LogError(ex, "[ScannerService] There was an exception updating series for {SeriesName}", series.Name);
         }
 
-        if (seriesAdded)
-        {
-            await _eventHub.SendMessageAsync(MessageFactory.SeriesAdded,
-                MessageFactory.SeriesAddedEvent(series.Id, series.Name, series.LibraryId));
-        }
+        await _metadataService.GenerateCoversForSeries(series, false);
+        EnqueuePostSeriesProcessTasks(series.LibraryId, series.Id);
+    }
 
-        _logger.LogInformation("[ScannerService] Finished series update on {SeriesName} in {Milliseconds} ms", seriesName, scanWatch.ElapsedMilliseconds);
-        EnqueuePostSeriesProcessTasks(series.LibraryId, series.Id, false);
+    private async Task UpdateSeriesFolderPath(IEnumerable<ParserInfo> parsedInfos, Library library, Series series)
+    {
+        var seriesDirs = _directoryService.FindHighestDirectoriesFromFiles(library.Folders.Select(l => l.Path),
+            parsedInfos.Select(f => f.FullFilePath).ToList());
+        if (seriesDirs.Keys.Count == 0)
+        {
+            _logger.LogCritical(
+                "Scan Series has files spread outside a main series folder. This has negative performance effects. Please ensure all series are under a single folder from library");
+            await _eventHub.SendMessageAsync(MessageFactory.Info,
+                MessageFactory.InfoEvent($"{series.Name} has files spread outside a single series folder",
+                    "This has negative performance effects. Please ensure all series are under a single folder from library"));
+        }
+        else
+        {
+            // Don't save FolderPath if it's a library Folder
+            if (!library.Folders.Select(f => f.Path).Contains(seriesDirs.Keys.First()))
+            {
+                series.FolderPath = Parser.Parser.NormalizePath(seriesDirs.Keys.First());
+                _logger.LogDebug("Updating {Series} FolderPath to {FolderPath}", series.Name, series.FolderPath);
+            }
+        }
     }
 
     public void EnqueuePostSeriesProcessTasks(int libraryId, int seriesId, bool forceUpdate = false)
     {
-        BackgroundJob.Enqueue(() => _metadataService.GenerateCoversForSeries(libraryId, seriesId, forceUpdate));
         BackgroundJob.Enqueue(() => _wordCountAnalyzerService.ScanSeries(libraryId, seriesId, forceUpdate));
     }
 
     private static void UpdateSeriesMetadata(Series series, LibraryType libraryType)
     {
+        series.Metadata ??= DbFactory.SeriesMetadata(new List<CollectionTag>());
         var isBook = libraryType == LibraryType.Book;
         var firstChapter = SeriesService.GetFirstChapterForMetadata(series, isBook);
 
@@ -341,10 +378,17 @@ public class ProcessSeries : IProcessSeries
             }
         }
 
+        var genres = chapters.SelectMany(c => c.Genres).ToList();
+        GenreHelper.KeepOnlySameGenreBetweenLists(series.Metadata.Genres.ToList(), genres, genre =>
+        {
+            if (series.Metadata.GenresLocked) return;
+            series.Metadata.Genres.Remove(genre);
+        });
+
         // NOTE: The issue here is that people is just from chapter, but series metadata might already have some people on it
         // I might be able to filter out people that are in locked fields?
         var people = chapters.SelectMany(c => c.People).ToList();
-        PersonHelper.KeepOnlySamePeopleBetweenLists(series.Metadata.People,
+        PersonHelper.KeepOnlySamePeopleBetweenLists(series.Metadata.People.ToList(),
             people, person =>
             {
                 switch (person.Role)
@@ -400,7 +444,6 @@ public class ProcessSeries : IProcessSeries
                 volume = DbFactory.Volume(volumeNumber);
                 volume.SeriesId = series.Id;
                 series.Volumes.Add(volume);
-                _unitOfWork.VolumeRepository.Add(volume);
             }
 
             volume.Name = volumeNumber;
@@ -604,7 +647,7 @@ public class ProcessSeries : IProcessSeries
         {
             var day = Math.Max(comicInfo.Day, 1);
             var month = Math.Max(comicInfo.Month, 1);
-            chapter.ReleaseDate = DateTime.Parse($"{month}/{day}/{comicInfo.Year}");
+            chapter.ReleaseDate = new DateTime(comicInfo.Year, month, day);
         }
 
         var people = GetTagValues(comicInfo.Colorist);

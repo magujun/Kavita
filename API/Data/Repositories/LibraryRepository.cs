@@ -44,6 +44,7 @@ public interface ILibraryRepository
     IEnumerable<JumpKeyDto> GetJumpBarAsync(int libraryId);
     Task<IList<AgeRatingDto>> GetAllAgeRatingsDtosForLibrariesAsync(List<int> libraryIds);
     Task<IList<LanguageDto>> GetAllLanguagesForLibrariesAsync(List<int> libraryIds);
+    Task<IList<LanguageDto>> GetAllLanguagesForLibrariesAsync();
     IEnumerable<PublicationStatusDto> GetAllPublicationStatusesDtosForLibrariesAsync(List<int> libraryIds);
     Task<bool> DoAnySeriesFoldersMatch(IEnumerable<string> folders);
     Library GetLibraryByFolder(string folder);
@@ -311,6 +312,26 @@ public class LibraryRepository : ILibraryRepository
             .ToList();
     }
 
+    public async Task<IList<LanguageDto>> GetAllLanguagesForLibrariesAsync()
+    {
+        var ret = await _context.Series
+            .Select(s => s.Metadata.Language)
+            .AsSplitQuery()
+            .AsNoTracking()
+            .Distinct()
+            .ToListAsync();
+
+        return ret
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(s => new LanguageDto()
+            {
+                Title = CultureInfo.GetCultureInfo(s).DisplayName,
+                IsoCode = s
+            })
+            .OrderBy(s => s.Title)
+            .ToList();
+    }
+
     public IEnumerable<PublicationStatusDto> GetAllPublicationStatusesDtosForLibrariesAsync(List<int> libraryIds)
     {
         return  _context.Series
@@ -334,13 +355,13 @@ public class LibraryRepository : ILibraryRepository
     /// <returns></returns>
     public async Task<bool> DoAnySeriesFoldersMatch(IEnumerable<string> folders)
     {
-        var normalized = folders.Select(Parser.Parser.NormalizePath);
+        var normalized = folders.Select(Services.Tasks.Scanner.Parser.Parser.NormalizePath);
         return await _context.Series.AnyAsync(s => normalized.Contains(s.FolderPath));
     }
 
     public Library? GetLibraryByFolder(string folder)
     {
-        var normalized = Parser.Parser.NormalizePath(folder);
+        var normalized = Services.Tasks.Scanner.Parser.Parser.NormalizePath(folder);
         return _context.Library
             .Include(l => l.Folders)
             .AsSplitQuery()

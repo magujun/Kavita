@@ -818,6 +818,9 @@ namespace API.Data.Migrations
                     b.Property<bool>("NameLocked")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("NormalizedLocalizedName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("NormalizedName")
                         .HasColumnType("TEXT");
 
