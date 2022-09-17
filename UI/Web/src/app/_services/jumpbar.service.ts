@@ -6,7 +6,7 @@ const keySize = 25; // Height of the JumpBar button
 @Injectable({
   providedIn: 'root'
 })
-export class JumpbarService {
+export class JumpBarService {
 
   resumeKeys: {[key: string]: string} = {};
 
