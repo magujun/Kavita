@@ -23,7 +23,7 @@
   --input-bg-readonly-color: rgba(255, 255, 255, 0.8);
   --input-focused-border-color: #ccc;
   --input-focused-bg-color: rgba(255, 255, 255, 1);
-  --input-text-color: rgba(0, 0, 0, 0.8);
+  --input-text-color: rgba(255, 255, 255, 0.8);
   --input-placeholder-color: #aeaeae;
   --input-border-color: #ccc;
   --input-focus-boxshadow-color: rgba(255, 255, 255, 0.5);
@@ -162,7 +162,7 @@
   --dropdown-item-hover-text-color: white;
   --dropdown-item-hover-bg-color: var(--primary-color-dark-shade);
   --dropdown-item-text-color: var(--navbar-text-color);
-  --dropdown-item-bg-color: rgba(0, 0, 0, 0.5);
+  --dropdown-item-bg-color: transparent;
   --dropdown-bg-color: rgba(0, 0, 0, 0.5);
   --dropdown-overlay-color: rgba(0, 0, 0, 0.5);
 
