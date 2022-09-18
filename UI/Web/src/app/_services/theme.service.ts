@@ -36,7 +36,7 @@ export class ThemeService implements OnDestroy {
 
 
   constructor(rendererFactory: RendererFactory2, @Inject(DOCUMENT) private document: Document, private httpClient: HttpClient,
-  messageHub: MessageHubService, private domSantizer: DomSanitizer, private confirmService: ConfirmService, private toastr: ToastrService) {
+  messageHub: MessageHubService, private domSanitizer: DomSanitizer, private confirmService: ConfirmService, private toastr: ToastrService) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
     this.getThemes();
@@ -162,7 +162,7 @@ export class ThemeService implements OnDestroy {
   private fetchThemeContent(themeId: number) {
     // TODO: Refactor {responseType: 'text' as 'json'} into a type so i don't have to retype it
     return this.httpClient.get<string>(this.baseUrl + 'theme/download-content?themeId=' + themeId, {responseType: 'text' as 'json'}).pipe(map(encodedCss => {
-      return this.domSantizer.sanitize(SecurityContext.STYLE, encodedCss);
+      return this.domSanitizer.sanitize(SecurityContext.STYLE, encodedCss);
     }));
   }
 
