@@ -25,6 +25,7 @@ public interface IReaderService
     Task MarkChaptersAsUnread(AppUser user, int seriesId, IEnumerable<Chapter> chapters);
     Task<bool> SaveReadingProgress(ProgressDto progressDto, int userId);
     Task<int> CapPageToChapter(int chapterId, int page);
+    int CapPageToChapter(Chapter chapter, int page);
     Task<int> GetNextChapterIdAsync(int seriesId, int volumeId, int currentChapterId, int userId);
     Task<int> GetPrevChapterIdAsync(int seriesId, int volumeId, int currentChapterId, int userId);
     Task<ChapterDto> GetContinuePoint(int seriesId, int userId);
@@ -59,7 +60,7 @@ public class ReaderService : IReaderService
 
     public static string FormatBookmarkFolderPath(string baseDirectory, int userId, int seriesId, int chapterId)
     {
-        return Parser.Parser.NormalizePath(Path.Join(baseDirectory, $"{userId}", $"{seriesId}", $"{chapterId}"));
+        return Tasks.Scanner.Parser.Parser.NormalizePath(Path.Join(baseDirectory, $"{userId}", $"{seriesId}", $"{chapterId}"));
     }
 
     /// <summary>
@@ -273,6 +274,21 @@ public class ReaderService : IReaderService
         return page;
     }
 
+    public int CapPageToChapter(Chapter chapter, int page)
+    {
+        if (page > chapter.Pages)
+        {
+            page = chapter.Pages;
+        }
+
+        if (page < 0)
+        {
+            page = 0;
+        }
+
+        return page;
+    }
+
     /// <summary>
     /// Tries to find the next logical Chapter
     /// </summary>
@@ -297,6 +313,7 @@ public class ReaderService : IReaderService
             if (chapterId > 0) return chapterId;
         }
 
+        var next = false;
         foreach (var volume in volumes)
         {
             if (volume.Number == currentVolume.Number && volume.Chapters.Count > 1)
@@ -306,10 +323,17 @@ public class ReaderService : IReaderService
                 var chapterId = GetNextChapterId(currentVolume.Chapters.OrderBy(x => double.Parse(x.Number), _chapterSortComparer),
                     currentChapter.Range, dto => dto.Range);
                 if (chapterId > 0) return chapterId;
-
+                next = true;
+                continue;
             }
 
-            if (volume.Number != currentVolume.Number + 1) continue;
+            if (volume.Number == currentVolume.Number)
+            {
+                next = true;
+                continue;
+            }
+
+            if (!next) continue;
 
             // Handle Chapters within next Volume
             // ! When selecting the chapter for the next volume, we need to make sure a c0 comes before a c1+
@@ -373,6 +397,7 @@ public class ReaderService : IReaderService
             if (chapterId > 0) return chapterId;
         }
 
+        var next = false;
         foreach (var volume in volumes)
         {
             if (volume.Number == currentVolume.Number)
@@ -380,8 +405,10 @@ public class ReaderService : IReaderService
                 var chapterId = GetNextChapterId(currentVolume.Chapters.OrderBy(x => double.Parse(x.Number), _chapterSortComparerForInChapterSorting).Reverse(),
                     currentChapter.Range, dto => dto.Range);
                 if (chapterId > 0) return chapterId;
+                next = true; // When the diff between volumes is more than 1, we need to explicitly tell that next volume is our use case
+                continue;
             }
-            if (volume.Number == currentVolume.Number - 1)
+            if (next)
             {
                 if (currentVolume.Number - 1 == 0) break; // If we have walked all the way to chapter volume, then we should break so logic outside can work
                 var lastChapter = volume.Chapters.MaxBy(x => double.Parse(x.Number), _chapterSortComparerForInChapterSorting);
@@ -496,7 +523,7 @@ public class ReaderService : IReaderService
         {
             var chapters = volume.Chapters
                 .OrderBy(c => float.Parse(c.Number))
-                .Where(c => !c.IsSpecial && Parser.Parser.MaxNumberFromRange(c.Range) <= chapterNumber);
+                .Where(c => !c.IsSpecial && Tasks.Scanner.Parser.Parser.MaxNumberFromRange(c.Range) <= chapterNumber);
             await MarkChaptersAsRead(user, volume.SeriesId, chapters);
         }
     }

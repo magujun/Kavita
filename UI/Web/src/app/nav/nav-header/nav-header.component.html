@@ -2,7 +2,7 @@
     <div class="container-fluid">
       <a class="visually-hidden-focusable focus-visible" href="javascript:void(0);" (click)="moveFocus()">Skip to main content</a>
       <a class="side-nav-toggle" *ngIf="navService?.sideNavVisibility$ | async" (click)="hideSideNav()"><i class="fas fa-bars"></i></a>
-      <a class="navbar-brand dark-exempt" routerLink="/libraries" routerLinkActive="active"><img width="28px" height="28px" class="logo" src="../../assets/images/logo.png" alt="kavita icon" aria-hidden="true"/><span class="d-none d-md-inline"> Kavita</span></a>
+      <a class="navbar-brand dark-exempt" routerLink="/libraries" routerLinkActive="active"><img src="../../assets/images/logo.png" alt="kavita icon" aria-hidden="true" class="logo"/><span class="d-none d-md-inline"> Kavita</span></a>
       <ul class="navbar-nav col me-auto">
         
         <div class="nav-item" *ngIf="(accountService.currentUser$ | async) as user">
@@ -14,7 +14,7 @@
               [minQueryLength]="2"
               initialValue=""
               placeholder="Search…"
-              [grouppedData]="searchResults"
+              [groupedData]="searchResults"
               (inputChanged)="onChangeSearch($event)"
               (clearField)="clearSearch()"
               (focusChanged)="focusUpdate($event)"
@@ -30,8 +30,8 @@
 
             <ng-template #seriesTemplate let-item>
               <div style="display: flex;padding: 5px;" (click)="clickSeriesSearchResult(item)">
-                <div style="width: 24px" class="me-1">
-                  <app-image class="me-3 search-result" width="24px" [imageUrl]="imageService.getSeriesCoverImage(item.seriesId)"></app-image>
+                <div class="me-1 search-result">
+                  <app-image class="me-3" [imageUrl]="imageService.getSeriesCoverImage(item.seriesId)"></app-image>
                 </div>
                 <div class="ms-1">
                   <app-series-format [format]="item.format"></app-series-format>
@@ -46,8 +46,8 @@
 
             <ng-template #collectionTemplate let-item>
               <div style="display: flex;padding: 5px;" (click)="clickCollectionSearchResult(item)">
-                <div style="width: 24px" class="me-1">
-                  <app-image class="me-3 search-result" width="24px" [imageUrl]="imageService.getCollectionCoverImage(item.id)"></app-image>
+                <div class="me-1 search-result">
+                  <app-image class="me-3" [imageUrl]="imageService.getCollectionCoverImage(item.id)"></app-image>
                 </div>
                 <div class="ms-1">
                   <span>{{item.title}}</span>
@@ -149,14 +149,14 @@
           
 
           <div ngbDropdown class="nav-item dropdown" display="dynamic" placement="bottom-right" *ngIf="(accountService.currentUser$ | async) as user" dropdown>
-            <button class="btn btn-outline-secondary primary-text" ngbDropdownToggle>
-              <i class="fa-solid fa-user-circle align-self-center phone-hidden d-xs-inline-block d-sm-inline-block d-md-none"></i><span class="d-none d-xs-none d-sm-none d-md-inline-block">{{user.username | sentenceCase}}</span>
+            <button class="btn primary-text" ngbDropdownToggle>
+              <i class="fa-solid fa-user-circle align-self-center phone-hidden d-xs-inline-block d-sm-inline-block d-md-none"></i><span class="d-none d-xs-none d-sm-none d-md-inline-block">{{user.username}}</span>
             </button>
             <div ngbDropdownMenu>
               <a class="xs-only" ngbDropdownItem routerLink="/admin/dashboard" *ngIf="user.roles.includes('Admin')">Server Settings</a>
               <a ngbDropdownItem routerLink="/preferences/">Settings</a>
               <a ngbDropdownItem href="https://wiki.kavitareader.com" rel="noopener noreferrer" target="_blank">Help</a>
-              <a ngbDropdownItem routerLink="/announcements/" *ngIf="accountService.hasAdminRole(user)">Annoucements</a>
+              <a ngbDropdownItem routerLink="/announcements/" *ngIf="accountService.hasAdminRole(user)">Announcements</a>
               <a ngbDropdownItem (click)="logout()">Logout</a>
             </div>
           </div>

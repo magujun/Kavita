@@ -6,6 +6,7 @@ using API.Entities;
 using API.Entities.Enums.Theme;
 using API.SignalR;
 using Kavita.Common;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Services.Tasks;
 
@@ -34,6 +35,7 @@ public class ThemeService : IThemeService
     /// </summary>
     /// <param name="themeId"></param>
     /// <returns></returns>
+    [AllowAnonymous]
     public async Task<string> GetContent(int themeId)
     {
         var theme = await _unitOfWork.SiteThemeRepository.GetThemeDto(themeId);
@@ -53,8 +55,8 @@ public class ThemeService : IThemeService
         _directoryService.ExistOrCreate(_directoryService.SiteThemeDirectory);
         var reservedNames = Seed.DefaultThemes.Select(t => t.NormalizedName).ToList();
         var themeFiles = _directoryService
-            .GetFilesWithExtension(Parser.Parser.NormalizePath(_directoryService.SiteThemeDirectory), @"\.css")
-            .Where(name => !reservedNames.Contains(Parser.Parser.Normalize(name))).ToList();
+            .GetFilesWithExtension(Scanner.Parser.Parser.NormalizePath(_directoryService.SiteThemeDirectory), @"\.css")
+            .Where(name => !reservedNames.Contains(Scanner.Parser.Parser.Normalize(name))).ToList();
 
         var allThemes = (await _unitOfWork.SiteThemeRepository.GetThemes()).ToList();
 
@@ -62,7 +64,7 @@ public class ThemeService : IThemeService
         var userThemes = allThemes.Where(t => t.Provider == ThemeProvider.User).ToList();
         foreach (var userTheme in userThemes)
         {
-            var filepath = Parser.Parser.NormalizePath(
+            var filepath = Scanner.Parser.Parser.NormalizePath(
                 _directoryService.FileSystem.Path.Join(_directoryService.SiteThemeDirectory, userTheme.FileName));
             if (_directoryService.FileSystem.File.Exists(filepath)) continue;
 
@@ -76,7 +78,7 @@ public class ThemeService : IThemeService
         foreach (var themeFile in themeFiles)
         {
             var themeName =
-                Parser.Parser.Normalize(_directoryService.FileSystem.Path.GetFileNameWithoutExtension(themeFile));
+                Scanner.Parser.Parser.Normalize(_directoryService.FileSystem.Path.GetFileNameWithoutExtension(themeFile));
             if (allThemeNames.Contains(themeName)) continue;
 
             _unitOfWork.SiteThemeRepository.Add(new SiteTheme()

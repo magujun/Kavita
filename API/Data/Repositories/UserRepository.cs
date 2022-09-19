@@ -5,12 +5,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using API.Constants;
 using API.DTOs;
+using API.DTOs.Filtering;
 using API.DTOs.Reader;
 using API.Entities;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace API.Data.Repositories;
 
@@ -23,7 +25,9 @@ public enum AppUserIncludes
     ReadingLists = 8,
     Ratings = 16,
     UserPreferences = 32,
-    WantToRead = 64
+    WantToRead = 64,
+    ReadingListsWithItems = 128,
+
 }
 
 public interface IUserRepository
@@ -31,19 +35,19 @@ public interface IUserRepository
     void Update(AppUser user);
     void Update(AppUserPreferences preferences);
     void Update(AppUserBookmark bookmark);
+    void Add(AppUserBookmark bookmark);
     public void Delete(AppUser user);
     void Delete(AppUserBookmark bookmark);
     Task<IEnumerable<MemberDto>>  GetEmailConfirmedMemberDtosAsync();
     Task<IEnumerable<MemberDto>> GetPendingMemberDtosAsync();
     Task<IEnumerable<AppUser>> GetAdminUsersAsync();
-    Task<IEnumerable<AppUser>> GetNonAdminUsersAsync();
     Task<bool> IsUserAdminAsync(AppUser user);
     Task<AppUserRating> GetUserRatingAsync(int seriesId, int userId);
     Task<AppUserPreferences> GetPreferencesAsync(string username);
     Task<IEnumerable<BookmarkDto>> GetBookmarkDtosForSeries(int userId, int seriesId);
     Task<IEnumerable<BookmarkDto>> GetBookmarkDtosForVolume(int userId, int volumeId);
     Task<IEnumerable<BookmarkDto>> GetBookmarkDtosForChapter(int userId, int chapterId);
-    Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId);
+    Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId, FilterDto filter);
     Task<IEnumerable<AppUserBookmark>> GetAllBookmarksAsync();
     Task<AppUserBookmark> GetBookmarkForPage(int page, int chapterId, int userId);
     Task<AppUserBookmark> GetBookmarkAsync(int bookmarkId);
@@ -51,11 +55,9 @@ public interface IUserRepository
     Task<AppUser> GetUserByUsernameAsync(string username, AppUserIncludes includeFlags = AppUserIncludes.None);
     Task<AppUser> GetUserByIdAsync(int userId, AppUserIncludes includeFlags = AppUserIncludes.None);
     Task<int> GetUserIdByUsernameAsync(string username);
-    Task<AppUser> GetUserWithReadingListsByUsernameAsync(string username);
     Task<IList<AppUserBookmark>> GetAllBookmarksByIds(IList<int> bookmarkIds);
     Task<AppUser> GetUserByEmailAsync(string email);
     Task<IEnumerable<AppUser>> GetAllUsers();
-
     Task<IEnumerable<AppUserPreferences>> GetAllPreferencesByThemeAsync(int themeId);
     Task<bool> HasAccessToLibrary(int libraryId, int userId);
     Task<IEnumerable<AppUser>> GetAllUsersAsync(AppUserIncludes includeFlags);
@@ -87,6 +89,11 @@ public class UserRepository : IUserRepository
     public void Update(AppUserBookmark bookmark)
     {
         _context.Entry(bookmark).State = EntityState.Modified;
+    }
+
+    public void Add(AppUserBookmark bookmark)
+    {
+        _context.AppUserBookmark.Add(bookmark);
     }
 
     public void Delete(AppUser user)
@@ -167,6 +174,11 @@ public class UserRepository : IUserRepository
             query = query.Include(u => u.ReadingLists);
         }
 
+        if (includeFlags.HasFlag(AppUserIncludes.ReadingListsWithItems))
+        {
+            query = query.Include(u => u.ReadingLists).ThenInclude(r => r.Items);
+        }
+
         if (includeFlags.HasFlag(AppUserIncludes.Ratings))
         {
             query = query.Include(u => u.Ratings);
@@ -201,19 +213,6 @@ public class UserRepository : IUserRepository
             .SingleOrDefaultAsync();
     }
 
-    /// <summary>
-    /// Gets an AppUser by username. Returns back Reading List and their Items.
-    /// </summary>
-    /// <param name="username"></param>
-    /// <returns></returns>
-    public async Task<AppUser> GetUserWithReadingListsByUsernameAsync(string username)
-    {
-        return await _context.Users
-            .Include(u => u.ReadingLists)
-            .ThenInclude(l => l.Items)
-            .AsSplitQuery()
-            .SingleOrDefaultAsync(x => x.UserName == username);
-    }
 
     /// <summary>
     /// Returns all Bookmarks for a given set of Ids
@@ -236,7 +235,8 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<AppUser>> GetAllUsers()
     {
-        return await _context.AppUser.ToListAsync();
+        return await _context.AppUser
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<AppUserPreferences>> GetAllPreferencesByThemeAsync(int themeId)
@@ -265,11 +265,6 @@ public class UserRepository : IUserRepository
     public async Task<IEnumerable<AppUser>> GetAdminUsersAsync()
     {
         return await _userManager.GetUsersInRoleAsync(PolicyConstants.AdminRole);
-    }
-
-    public async Task<IEnumerable<AppUser>> GetNonAdminUsersAsync()
-    {
-        return await _userManager.GetUsersInRoleAsync(PolicyConstants.PlebRole);
     }
 
     public async Task<bool> IsUserAdminAsync(AppUser user)
@@ -323,12 +318,63 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId)
+    /// <summary>
+    /// Get all bookmarks for the user
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="filter">Only supports SeriesNameQuery</param>
+    /// <returns></returns>
+    public async Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId, FilterDto filter)
     {
-        return await _context.AppUserBookmark
+        var query = _context.AppUserBookmark
             .Where(x => x.AppUserId == userId)
             .OrderBy(x => x.Page)
-            .AsNoTracking()
+            .AsNoTracking();
+
+        if (!string.IsNullOrEmpty(filter.SeriesNameQuery))
+        {
+            var seriesNameQueryNormalized = Services.Tasks.Scanner.Parser.Parser.Normalize(filter.SeriesNameQuery);
+            var filterSeriesQuery = query.Join(_context.Series, b => b.SeriesId, s => s.Id, (bookmark, series) => new
+                {
+                    bookmark,
+                    series
+                })
+                .Where(o => EF.Functions.Like(o.series.Name, $"%{filter.SeriesNameQuery}%")
+                            || EF.Functions.Like(o.series.OriginalName, $"%{filter.SeriesNameQuery}%")
+                            || EF.Functions.Like(o.series.LocalizedName, $"%{filter.SeriesNameQuery}%")
+                            || EF.Functions.Like(o.series.NormalizedName, $"%{seriesNameQueryNormalized}%")
+                );
+
+            // This doesn't work on bookmarks themselves, only the series. For now, I don't think there is much value add
+            // if (filter.SortOptions != null)
+            // {
+            //     if (filter.SortOptions.IsAscending)
+            //     {
+            //         filterSeriesQuery = filter.SortOptions.SortField switch
+            //         {
+            //             SortField.SortName => filterSeriesQuery.OrderBy(s => s.series.SortName),
+            //             SortField.CreatedDate => filterSeriesQuery.OrderBy(s => s.bookmark.Created),
+            //             SortField.LastModifiedDate => filterSeriesQuery.OrderBy(s => s.bookmark.LastModified),
+            //             _ => filterSeriesQuery
+            //         };
+            //     }
+            //     else
+            //     {
+            //         filterSeriesQuery = filter.SortOptions.SortField switch
+            //         {
+            //             SortField.SortName => filterSeriesQuery.OrderByDescending(s => s.series.SortName),
+            //             SortField.CreatedDate => filterSeriesQuery.OrderByDescending(s => s.bookmark.Created),
+            //             SortField.LastModifiedDate => filterSeriesQuery.OrderByDescending(s => s.bookmark.LastModified),
+            //             _ => filterSeriesQuery
+            //         };
+            //     }
+            // }
+
+            query = filterSeriesQuery.Select(o => o.bookmark);
+        }
+
+
+        return await query
             .ProjectTo<BookmarkDto>(_mapper.ConfigurationProvider)
             .ToListAsync();
     }
@@ -403,15 +449,5 @@ public class UserRepository : IUserRepository
             .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task<bool> ValidateUserExists(string username)
-    {
-        if (await _userManager.Users.AnyAsync(x => x.NormalizedUserName == username.ToUpper()))
-        {
-            throw new ValidationException("Username is taken.");
-        }
-
-        return true;
     }
 }

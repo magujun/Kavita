@@ -17,6 +17,34 @@ img {
     }
 } 
 
+@media(max-width: 600px) {
+  .col-1 {
+    width: 16%;
+  }
+  .col-2 {
+    width: 20%;
+  }
+  .input-group>:not(:last-child) {
+    border: none !important;
+    width: 3.3rem !important;
+    border-top-right-radius: 0.25rem !important;
+    border-top-left-radius: 0.25rem !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+  .input-group>:not(:first-child) {
+    border: none !important;
+    width: 3rem !important;
+    padding: 0.25rem 0.25rem !important;
+    border-top-right-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-right-radius: 0.25rem !important;
+    border-bottom-left-radius: 0.25rem !important;
+    margin-left: 0 !important;
+  }
+} 
+
+
 .reading-area {
   position: relative;
   overflow: auto;
@@ -91,6 +119,10 @@ img {
     z-index: 1;
 }
 
+.input-group>* {
+  border: none !important;
+}
+
 .title, .subtitle {
     text-overflow: ellipsis;
     overflow: hidden;
@@ -98,11 +130,30 @@ img {
 }
 
 .bottom-menu {
-    padding: 20px 20px;
+    padding: 0.75rem 0.75rem;
 }
 
+.fixed-bottom {
+  font-size: 0.75rem !important;
+  padding: 0.5rem 0.5rem;
+}
 
+.custom-slider {
+  flex-wrap: nowrap;
+}
 
+.btn-icon {
+  width: 2em;
+  height: 2em;
+  text-align: center;
+  padding: 0.25rem;
+  border-radius: 2rem !important;
+  border: none;
+}
+
+.btn-outline-secondary {
+  border: none;
+}
 
 .overlay {
   background-color: var(--manga-reader-overlay-bg-color);
@@ -167,41 +218,47 @@ img {
   max-width: 100%;
 }
 
+button.bottom-menu {
+  position: relative;
+  padding: 0;
+  width: 3rem;
+  border: none !important;
+}
+
+
+// Splitting Icon
+.form-control:focus {
+  box-shadow: none;
+}
 
 // Splitting Icon
 .split {
-    height: 20px;
-    width: 40px;
-    z-index: 1;
-    top: 0;
-    overflow: hidden;
-    border: 2px solid #ccc;
-    vertical-align: sub;
-    display: inline-block;
-
-    &::before {
-        margin-left: 30%;
-    }
+  height: 100%;
+  width: 100%;
+  top: 0;
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.4);
 
     /* Control the left side */
-    .left-side {
-        height: 20px;
-        width: 20px;
-        background-color: rgba(255, 255, 255, 0.6);
-        margin-top: -16px;
+    &.left-side {
+        width: 50%;
+        left: 0;
+        border-radius: 0.25rem 0 0 0.25rem;
+        background-color: var(--bs-btn-bg);
+        transition: opacity .5s;
     }
     
     /* Control the right side */
-    .right-side {
-        height: 20px;
-        margin-left: 20px;
-        width: 20px;
-        background-color: rgba(255, 255, 255, 0.6);
-        margin-top: -16px;
+    &.right-side {
+        width: 50%;
+        right: 0;
+        background-color: var(--bs-btn-bg);;
+        transition: opacity .5s;
     }
 
-    .none {
-        background-color: rgba(255, 255, 255, 0.5);
+    &.none, &.fit {
+      border-radius: 0.25rem 0 0 0.25rem;
+      background-color: rgba(0, 0, 0, 0);
     }
 
     // For layout only
@@ -216,6 +273,9 @@ img {
     .right {
       left: -7px;
     }
+
+    // For layout only
+
   }
 
   ::ng-deep {
@@ -244,6 +304,7 @@ img {
     .custom-slider .ngx-slider .ngx-slider-bubble {
       bottom: 14px;
       font-weight: bold;
+      font-size: 0.75rem;
     }
   
     .custom-slider .ngx-slider .ngx-slider-limit {

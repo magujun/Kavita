@@ -1,9 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { ToastrService } from 'ngx-toastr';
 import { Observable, Subject } from 'rxjs';
-import { filter, finalize, map, take, takeUntil, takeWhile } from 'rxjs/operators';
-import { Download } from 'src/app/shared/_models/download';
-import { DownloadEntityType, DownloadEvent, DownloadService } from 'src/app/shared/_services/download.service';
+import { filter, map, takeUntil } from 'rxjs/operators';
+import { DownloadEvent, DownloadService } from 'src/app/shared/_services/download.service';
 import { UtilityService } from 'src/app/shared/_services/utility.service';
 import { Chapter } from 'src/app/_models/chapter';
 import { CollectionTag } from 'src/app/_models/collection-tag';
@@ -75,8 +73,8 @@ export class CardItemComponent implements OnInit, OnDestroy {
    */
   @Input() suppressArchiveWarning: boolean = false;
   /**
-    * The number of updates/items within the card. If less than 2, will not be shown.
-    */
+   * The number of updates/items within the card. If less than 2, will not be shown.
+   */
   @Input() count: number = 0;
   /**
    * Additional information to show on the overlay area. Will always render.
@@ -99,10 +97,10 @@ export class CardItemComponent implements OnInit, OnDestroy {
    * Format of the entity (only applies to Series)
    */
   format: MangaFormat = MangaFormat.UNKNOWN;
-  chapterTitle: string = '';
+  tooltipTitle: string = this.title;
 
   /**
-   * This is the download we get from download service. 
+   * This is the download we get from download service.
    */
   download$: Observable<DownloadEvent | null> | null = null;
 
@@ -118,12 +116,6 @@ export class CardItemComponent implements OnInit, OnDestroy {
 
   private user: User | undefined;
 
-  get tooltipTitle() {
-    if (this.chapterTitle === '' || this.chapterTitle === null) return this.title;
-    return this.chapterTitle;
-  }
-
-
   get MangaFormat(): typeof MangaFormat {
     return MangaFormat;
   }
@@ -132,7 +124,7 @@ export class CardItemComponent implements OnInit, OnDestroy {
 
   constructor(public imageService: ImageService, private libraryService: LibraryService,
     public utilityService: UtilityService, private downloadService: DownloadService,
-    private toastr: ToastrService, public bulkSelectionService: BulkSelectionService,
+    public bulkSelectionService: BulkSelectionService,
     private messageHub: MessageHubService, private accountService: AccountService, 
     private scrollService: ScrollService, private readonly cdRef: ChangeDetectorRef) {}
 
@@ -158,14 +150,28 @@ export class CardItemComponent implements OnInit, OnDestroy {
     this.format = (this.entity as Series).format;
 
     if (this.utilityService.isChapter(this.entity)) {
-      this.chapterTitle = this.utilityService.asChapter(this.entity).titleName;
+      const chapterTitle = this.utilityService.asChapter(this.entity).titleName;
+      if (chapterTitle === '' || chapterTitle === null || chapterTitle === undefined) {
+        const volumeTitle = this.utilityService.asChapter(this.entity).volumeTitle
+        if (volumeTitle === '' || volumeTitle === null || volumeTitle === undefined) {
+          this.tooltipTitle = (this.title).trim();
+        } else {
+          this.tooltipTitle = (this.utilityService.asChapter(this.entity).volumeTitle + ' ' + this.title).trim();
+        }
+      } else {
+        this.tooltipTitle = chapterTitle;
+      }
     } else if (this.utilityService.isVolume(this.entity)) {
       const vol = this.utilityService.asVolume(this.entity);
       if (vol.chapters !== undefined && vol.chapters.length > 0) {
-        this.chapterTitle = vol.chapters[0].titleName;
+        this.tooltipTitle = vol.chapters[0].titleName;
       }
+      if (this.tooltipTitle === '') {
+        this.tooltipTitle = vol.name;
+      }
+    } else if (this.utilityService.isSeries(this.entity)) {
+      this.tooltipTitle = this.title || (this.utilityService.asSeries(this.entity).name);
     }
-
     this.accountService.currentUser$.pipe(takeUntil(this.onDestroy)).subscribe(user => {
       this.user = user;
     });
@@ -186,20 +192,22 @@ export class CardItemComponent implements OnInit, OnDestroy {
             chapter.pagesRead = updateEvent.pagesRead;
           }
         } else {
+          // Ignore
+          return;
           // re-request progress for the series
-          const s = this.utilityService.asSeries(this.entity);
-          let pagesRead = 0;
-          if (s.hasOwnProperty('volumes')) {
-            s.volumes.forEach(v => {
-              v.chapters.forEach(c => {
-                if (c.id === updateEvent.chapterId) {
-                  c.pagesRead = updateEvent.pagesRead;
-                }
-                pagesRead += c.pagesRead;
-              });
-            });
-            s.pagesRead = pagesRead;
-          }
+          // const s = this.utilityService.asSeries(this.entity);
+          // let pagesRead = 0;
+          // if (s.hasOwnProperty('volumes')) {
+          //   s.volumes.forEach(v => {
+          //     v.chapters.forEach(c => {
+          //       if (c.id === updateEvent.chapterId) {
+          //         c.pagesRead = updateEvent.pagesRead;
+          //       }
+          //       pagesRead += c.pagesRead;
+          //     });
+          //   });
+          //   s.pagesRead = pagesRead;
+          // }
         }
       }
 

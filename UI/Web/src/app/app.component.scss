@@ -1,15 +1,16 @@
 .content-wrapper {
-    padding: 0 10px 0;
     height: 100%;
 }
 
 .companion-bar {
-    transition: all var(--side-nav-companion-bar-transistion);
-    margin-left: 40px;
+    transition: all var(--side-nav-companion-bar-transition);
+    margin-left: 3rem;
+    margin-top: 4rem;
+    height: calc(var(--vh)*100 - 4rem);
 }
 
 .companion-bar-content {
-    margin-left: 190px;
+    margin-left: 16rem;
     width: auto;
 }
 

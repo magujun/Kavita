@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Chapter } from '../_models/chapter';
 import { CollectionTag } from '../_models/collection-tag';
 import { Library } from '../_models/library';
-import { MangaFormat } from '../_models/manga-format';
 import { ReadingList } from '../_models/reading-list';
 import { Series } from '../_models/series';
 import { Volume } from '../_models/volume';
@@ -18,9 +17,9 @@ export enum Action {
    */
   MarkAsUnread = 1,
   /**
-   * Invoke a Scan Library
+   * Invoke a Scan on Series/Library
    */
-  ScanLibrary = 2,
+  Scan = 2,
   /**
    * Delete the entity
    */
@@ -129,7 +128,7 @@ export class ActionFactoryService {
         });
 
         this.seriesActions.push({
-          action: Action.ScanLibrary,
+          action: Action.Scan,
           title: 'Scan Series',
           callback: this.dummyCallback,
           requiresAdmin: true
@@ -171,7 +170,7 @@ export class ActionFactoryService {
         });
 
         this.libraryActions.push({
-          action: Action.ScanLibrary,
+          action: Action.Scan,
           title: 'Scan Library',
           callback: this.dummyCallback,
           requiresAdmin: true
@@ -271,13 +270,13 @@ export class ActionFactoryService {
         action: Action.MarkAsRead,
         title: 'Mark as Read',
         callback: this.dummyCallback,
-          requiresAdmin: false
+        requiresAdmin: false
       },
       {
         action: Action.MarkAsUnread,
         title: 'Mark as Unread',
         callback: this.dummyCallback,
-          requiresAdmin: false
+        requiresAdmin: false
       }, 
       {
         action: Action.AddToReadingList,

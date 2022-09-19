@@ -3,7 +3,8 @@
 html, body { height: 100%; overflow: hidden; }
 body {
   margin: 0;
-  font-family: var(--body-font-family);
+  font-family: var(--body-font-family), sans-serif;
+  font-size: var(--body-font-size);
   color: var(--body-text-color);
   color-scheme: var(--color-scheme);
   max-height: 100%;
@@ -28,5 +29,5 @@ hr {
 }
 
 .subtitle-with-actionables {
-    margin-left: 32px;
+    margin-left: 2.5rem;
 }

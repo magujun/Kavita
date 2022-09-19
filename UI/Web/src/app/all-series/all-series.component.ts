@@ -13,7 +13,6 @@ import { Series } from '../_models/series';
 import { FilterEvent, SeriesFilter } from '../_models/series-filter';
 import { Action } from '../_services/action-factory.service';
 import { ActionService } from '../_services/action.service';
-import { LibraryService } from '../_services/library.service';
 import { EVENTS, Message, MessageHubService } from '../_services/message-hub.service';
 import { SeriesService } from '../_services/series.service';
 
@@ -33,11 +32,11 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
   filterOpen: EventEmitter<boolean> = new EventEmitter();
   filterActiveCheck!: SeriesFilter;
   filterActive: boolean = false;
-  jumpbarKeys: Array<JumpKey> = [];
+  jumpBarKeys: Array<JumpKey> = [];
 
   bulkActionCallback = (action: Action, data: any) => {
-    const selectedSeriesIndexies = this.bulkSelectionService.getSelectedCardsForSource('series');
-    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexies.includes(index + ''));
+    const selectedSeriesIndexes = this.bulkSelectionService.getSelectedCardsForSource('series');
+    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexes.includes(index + ''));
 
     switch (action) {
       case Action.AddToReadingList:
@@ -86,14 +85,14 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
     private titleService: Title, private actionService: ActionService, 
     public bulkSelectionService: BulkSelectionService, private hubService: MessageHubService,
     private utilityService: UtilityService, private route: ActivatedRoute, 
-    private filterUtilityService: FilterUtilitiesService, private libraryService: LibraryService) {
+    private filterUtilityService: FilterUtilitiesService) {
     
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
     this.titleService.setTitle('Kavita - All Series');
 
     this.pagination = this.filterUtilityService.pagination(this.route.snapshot);
     [this.filterSettings.presets, this.filterSettings.openByDefault]  = this.filterUtilityService.filterPresetsFromUrl(this.route.snapshot);
-    this.filterActiveCheck = this.seriesService.createSeriesFilter();
+    this.filterActiveCheck = this.filterUtilityService.createSeriesFilter();
   }
 
   ngOnInit(): void {
@@ -145,7 +144,7 @@ export class AllSeriesComponent implements OnInit, OnDestroy {
         }
         keys[ch] += 1;
       });
-      this.jumpbarKeys = Object.keys(keys).map(k => {
+      this.jumpBarKeys = Object.keys(keys).map(k => {
         return {
           key: k,
           size: keys[k],

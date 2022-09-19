@@ -525,6 +525,9 @@ namespace API.Data.Migrations
                     b.Property<int>("ChapterId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FilePath")
                         .HasColumnType("TEXT");
 
@@ -779,10 +782,16 @@ namespace API.Data.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FolderPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Format")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastChapterAdded")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastFolderScanned")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("LastModified")
@@ -808,6 +817,9 @@ namespace API.Data.Migrations
 
                     b.Property<bool>("NameLocked")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("NormalizedLocalizedName")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedName")
                         .HasColumnType("TEXT");

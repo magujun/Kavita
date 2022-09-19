@@ -9,15 +9,16 @@
 
 .card-container{
   display: grid;
-  grid-template-columns: repeat(auto-fill, 158px);
+  grid-template-columns: repeat(auto-fill, 165px);
   grid-gap: 0.5rem;
   justify-content: space-around;
 }
 
 .virtual-scroller, virtual-scroller {
   width: 100%;
-  height: calc(100vh - 85px);
+  height: calc(100vh - 25rem);
   max-height: calc(var(--vh)*100 - 170px);
+  overflow: auto;
 }
 
 // This is responsible for ensuring we scroll down and only tabs and companion bar is visible
@@ -25,10 +26,18 @@
   // Height set dynamically by get ScrollingBlockHeight()
   overflow-y: auto;
   position: relative;
-  overscroll-behavior-y: none;
+  overflow: hidden !important;
 }
 
 .title, .subtitle-with-actionable {
   word-break: break-all;
   margin-bottom: 0;
+}
+
+.image-container {
+  max-height: 400px;
+}
+
+.info-container {
+  align-items: flex-start;
 }

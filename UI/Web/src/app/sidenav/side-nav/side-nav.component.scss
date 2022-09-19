@@ -1,12 +1,12 @@
 .side-nav {
-    padding-bottom: 10px;
-    width: 190px;
+    padding: 0;
+    width: 16rem;
     background-color: var(--side-nav-bg-color);
-    height: calc((var(--vh)*100) - 85px);
+    height: calc(100vh - 4.5rem);
     position: fixed;
     margin: 0;
-    left: 10px;
-    top: 73px;
+    left: 0.5rem;
+    top: 4rem;
     border-radius: var(--side-nav-border-radius);
     transition: width var(--side-nav-openclose-transition), background-color var(--side-nav-bg-color-transition), border-color var(--side-nav-border-transition);
     overflow: auto;

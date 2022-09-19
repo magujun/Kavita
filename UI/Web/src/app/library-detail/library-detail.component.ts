@@ -41,19 +41,20 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
   filterOpen: EventEmitter<boolean> = new EventEmitter();
   filterActive: boolean = false;
   filterActiveCheck!: SeriesFilter;
+  refresh: EventEmitter<void> = new EventEmitter();
 
-  jumpKeys: Array<JumpKey> = [];
+  jumpBarKeys: Array<JumpKey> = [];
 
   tabs: Array<{title: string, fragment: string, icon: string}> = [
     {title: 'Library', fragment: '', icon: 'fa-landmark'},
-    {title: 'Recommended', fragment: 'recomended', icon: 'fa-award'},
+    {title: 'Recommended', fragment: 'recommended', icon: 'fa-award'},
   ];
   active = this.tabs[0];
 
 
   bulkActionCallback = (action: Action, data: any) => {
-    const selectedSeriesIndexies = this.bulkSelectionService.getSelectedCardsForSource('series');
-    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexies.includes(index + ''));
+    const selectedSeriesIndexes = this.bulkSelectionService.getSelectedCardsForSource('series');
+    const selectedSeries = this.series.filter((series, index: number) => selectedSeriesIndexes.includes(index + ''));
 
     switch (action) {
       case Action.AddToReadingList:
@@ -123,7 +124,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     });
 
     this.libraryService.getJumpBar(this.libraryId).subscribe(barDetails => {
-      this.jumpKeys = barDetails;
+      this.jumpBarKeys = barDetails;
       this.cdRef.markForCheck();
     });
 
@@ -133,7 +134,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     [this.filterSettings.presets, this.filterSettings.openByDefault] = this.filterUtilityService.filterPresetsFromUrl(this.route.snapshot);
     if (this.filterSettings.presets) this.filterSettings.presets.libraries = [this.libraryId];
     // Setup filterActiveCheck to check filter against
-    this.filterActiveCheck = this.seriesService.createSeriesFilter();
+    this.filterActiveCheck = this.filterUtilityService.createSeriesFilter();
     this.filterActiveCheck.libraries = [this.libraryId];
 
     this.filterSettings.libraryDisabled = true;
@@ -141,15 +142,38 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.hubService.messages$.pipe(debounceTime(6000), takeUntil(this.onDestroy)).subscribe((event) => {
+    this.hubService.messages$.pipe(takeUntil(this.onDestroy)).subscribe((event) => {
       if (event.event === EVENTS.SeriesAdded) {
         const seriesAdded = event.payload as SeriesAddedEvent;
         if (seriesAdded.libraryId !== this.libraryId) return;
-        this.loadPage();
+        if (!this.utilityService.deepEqual(this.filter, this.filterActiveCheck)) {
+          this.loadPage();
+          return;
+        }
+        this.seriesService.getSeries(seriesAdded.seriesId).subscribe(s => {
+          this.series = [...this.series, s].sort((s1: Series, s2: Series) => {
+            if (s1.sortName < s2.sortName) return -1;
+            if (s1.sortName > s2.sortName) return 1;
+            return 0;
+          });
+          this.pagination.totalItems++;
+          this.cdRef.markForCheck();
+          this.refresh.emit();
+        });
+        
+        
       } else if (event.event === EVENTS.SeriesRemoved) {
         const seriesRemoved = event.payload as SeriesRemovedEvent;
         if (seriesRemoved.libraryId !== this.libraryId) return;
-        this.loadPage();
+        if (!this.utilityService.deepEqual(this.filter, this.filterActiveCheck)) {
+          this.loadPage();
+          return;
+        }
+
+        this.series = this.series.filter(s => s.id != seriesRemoved.seriesId);
+        this.pagination.totalItems--;
+        this.cdRef.markForCheck();
+        this.refresh.emit();
       }
     });
   }
@@ -179,7 +203,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
       lib = {id: this.libraryId, name: this.libraryName};
     }
     switch (action) {
-      case(Action.ScanLibrary):
+      case(Action.Scan):
         this.actionService.scanLibrary(lib);
         break;
       case(Action.RefreshMetadata):
@@ -206,7 +230,7 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
   loadPage() {
     // The filter is out of sync with the presets from typeaheads on first load but syncs afterwards
     if (this.filter == undefined) {
-      this.filter = this.seriesService.createSeriesFilter();
+      this.filter = this.filterUtilityService.createSeriesFilter();
       this.filter.libraries.push(this.libraryId);
       this.cdRef.markForCheck();
     }
@@ -228,5 +252,5 @@ export class LibraryDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['library', this.libraryId, 'series', series.id]);
   }
 
-  trackByIdentity = (index: number, item: Series) => `${item.name}_${item.localizedName}_${item.pagesRead}`;
+  trackByIdentity = (index: number, item: Series) => `${item.id}_${item.name}_${item.localizedName}_${item.pagesRead}`;
 }

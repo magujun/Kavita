@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
-import { finalize, map, Observable, Subject, take, takeWhile, takeUntil } from 'rxjs';
+import { map, Observable, Subject, takeUntil } from 'rxjs';
 import { Download } from 'src/app/shared/_models/download';
 import { DownloadEvent, DownloadService } from 'src/app/shared/_services/download.service';
 import { UtilityService } from 'src/app/shared/_services/utility.service';
 import { Chapter } from 'src/app/_models/chapter';
 import { LibraryType } from 'src/app/_models/library';
-import { Series } from 'src/app/_models/series';
 import { RelationKind } from 'src/app/_models/series-detail/relation-kind';
 import { Volume } from 'src/app/_models/volume';
 import { Action, ActionItem } from 'src/app/_services/action-factory.service';
@@ -45,9 +44,9 @@ export class ListItemComponent implements OnInit, OnDestroy {
    */
   @Input() imageHeight: string = '230px';
   /**
-   * Size of the Image Width Defaults to 158px.
+   * Size of the Image Width Defaults to 165px.
    */
-  @Input() imageWidth: string = '158px';
+  @Input() imageWidth: string = '165px';
   @Input() seriesLink: string = '';
 
   @Input() pagesRead: number = 0;

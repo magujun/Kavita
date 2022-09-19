@@ -25,7 +25,8 @@
                         [filterSettings]="filterSettings"
                         [trackByIdentity]="trackByIdentity"
                         [filterOpen]="filterOpen"
-                        [jumpBarKeys]="jumpKeys"
+                        [jumpBarKeys]="jumpBarKeys"
+                        [refresh]="refresh"
                         (applyFilter)="updateFilter($event)"
                         >
                         <ng-template #cardItem let-item let-position="idx">

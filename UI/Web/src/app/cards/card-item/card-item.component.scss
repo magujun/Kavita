@@ -2,7 +2,7 @@
 
 $triangle-size: 30px;
 $image-height: 230px;
-$image-width: 160px;
+$image-width: 165px;
 
 .error-banner {
     width: $image-width;
@@ -103,7 +103,7 @@ $image-width: 160px;
     position: absolute;
     top: 5px;
     left: 5px;
-    border-radius: 15px;
+    border-radius: 0.25em;
     padding: 0 10px;
     background-color: var(--card-bg-color);
 }
@@ -137,6 +137,7 @@ $image-width: 160px;
         top: 5px;
         right: 10px;
         position: absolute;
+        font-size: 1rem;
     }
 }
 
@@ -169,5 +170,5 @@ $image-width: 160px;
     width: 100%;
     height: $image-height;
     z-index: 10;
-    transition: all 0.2s;
+    transition: all 0.5s;
 }
